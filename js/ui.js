@@ -1,0 +1,121 @@
+// Petites briques d'interface partagées (le « kit » côté code).
+import { ICONS } from "./icons.js";
+import { inkOn } from "./colors.js";
+
+const SVGNS = "http://www.w3.org/2000/svg";
+
+/** Crée un élément. h("div", {class:"x", onclick:fn}, "texte", autreNoeud) */
+export function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else if (k === "html") el.innerHTML = v;
+    else if (k === "class") el.className = v;
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  add(el, kids);
+  return el;
+}
+function add(el, kids) {
+  for (const k of kids.flat()) {
+    if (k == null || k === false) continue;
+    el.append(k.nodeType ? k : document.createTextNode(String(k)));
+  }
+}
+
+/** Icône SVG du kit. */
+export function icon(name, size = 24, color = "var(--ink)", sw = 2, fill = "none") {
+  const wrap = document.createElement("span");
+  wrap.style.display = "inline-flex";
+  wrap.innerHTML = `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${fill}" stroke="${color}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ""}</svg>`;
+  return wrap.firstChild;
+}
+
+export function hearts(n, size = 26) {
+  const box = h("div", { class: "hearts", role: "img", "aria-label": `${n} cœurs` });
+  for (let i = 0; i < n; i++) box.append(icon("heart", size, "var(--ink)", 1.6, "var(--red)"));
+  return box;
+}
+
+/** Disque coloré avec une icône blanche (tuiles de l'accueil). */
+export function disc(name, color, size = 60) {
+  const d = h("div", { class: "disc", style: `background:${color};width:${size}px;height:${size}px` });
+  d.append(icon(name, size * 0.5, "#fff", 2.2));
+  return d;
+}
+
+export function spinner(text = "Chargement…") {
+  return h("div", { class: "page center", style: "padding-top:80px" },
+    h("div", { class: "spin" }, icon("moon", 36, "var(--muted)")),
+    h("div", { class: "muted" }, text));
+}
+
+export function errorBox(e, retry) {
+  return h("div", { class: "card" },
+    h("h3", null, "Oups, ça ne marche pas"),
+    h("div", { class: "muted" }, String(e && e.message || e)),
+    retry && h("button", { class: "btn", onclick: retry }, "Réessayer"));
+}
+
+/**
+ * Appui long avec anneau qui se remplit (jeux vidéo). `ring` = élément <circle>.
+ * Renvoie rien ; appelle onDone() après `ms` millisecondes de pression continue.
+ */
+export function longPress(target, ring, ms, onDone) {
+  const L = 2 * Math.PI * 22; // rayon 22 → circonférence
+  ring.setAttribute("stroke-dasharray", String(L));
+  ring.setAttribute("stroke-dashoffset", String(L));
+  let t0 = 0, raf = 0, done = false;
+  const reset = () => { cancelAnimationFrame(raf); t0 = 0; ring.setAttribute("stroke-dashoffset", String(L)); };
+  const frame = () => {
+    const k = Math.min(1, (performance.now() - t0) / ms);
+    ring.setAttribute("stroke-dashoffset", String(L * (1 - k)));
+    if (k >= 1) { done = true; if (navigator.vibrate) navigator.vibrate(60); onDone(); return; }
+    raf = requestAnimationFrame(frame);
+  };
+  target.addEventListener("pointerdown", e => { e.preventDefault(); done = false; t0 = performance.now(); raf = requestAnimationFrame(frame); });
+  for (const n of ["pointerup", "pointercancel", "pointerleave"]) target.addEventListener(n, () => { if (!done) reset(); });
+  target.addEventListener("contextmenu", e => e.preventDefault());
+}
+
+/** Anneau SVG (cercle + progression) + icône au centre. */
+export function ringBadge(iconName) {
+  const wrap = h("div", { class: "ringwrap" });
+  const svg = document.createElementNS(SVGNS, "svg");
+  svg.setAttribute("viewBox", "0 0 52 52"); svg.setAttribute("class", "ring");
+  const bg = document.createElementNS(SVGNS, "circle");
+  for (const [k, v] of Object.entries({ cx: 26, cy: 26, r: 22, fill: "none", stroke: "#E6D3B3", "stroke-width": 6 })) bg.setAttribute(k, v);
+  const ring = document.createElementNS(SVGNS, "circle");
+  for (const [k, v] of Object.entries({ cx: 26, cy: 26, r: 22, fill: "none", stroke: "var(--teal)", "stroke-width": 6, "stroke-linecap": "round", transform: "rotate(-90 26 26)" })) ring.setAttribute(k, v);
+  svg.append(bg, ring);
+  wrap.append(svg, h("div", { class: "lockic" }, icon(iconName, 22, "var(--muted)")));
+  return { wrap, ring };
+}
+
+/** Lecture à voix haute avec la voix du téléphone (français). */
+export function speak(text) {
+  if (!("speechSynthesis" in window)) return false;
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "fr-FR";
+  const v = speechSynthesis.getVoices().find(x => x.lang && x.lang.toLowerCase().startsWith("fr"));
+  if (v) u.voice = v;
+  u.rate = 0.95;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+  return true;
+}
+
+/** Case d'inventaire (à la Minecraft) : fond de la couleur de l'objet, icône par-dessus. */
+export function objSlot(o, size = 48) {
+  const s = h("div", { class: "slot", style: `width:${size}px;height:${size}px;background:${o.couleur}`, role: "img", "aria-label": o.nom, title: o.nom });
+  s.append(icon(o.icone, size * 0.56, inkOn(o.couleur), 2.4));
+  return s;
+}
+
+/** Case vide en pointillés (place réservée, par exemple pour un compagnon). */
+export function emptySlot(iconName = "paw", size = 48) {
+  const s = h("div", { class: "slot empty", style: `width:${size}px;height:${size}px`, "aria-hidden": "true" });
+  s.append(icon(iconName, size * 0.5, "var(--dash)", 2));
+  return s;
+}

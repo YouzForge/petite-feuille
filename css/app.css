@@ -1,0 +1,117 @@
+/* Petite Feuille — styles de l'application (couleurs et polices du kit de composants des maquettes) */
+@font-face{font-family:"Fredoka";font-weight:500;font-display:swap;src:url(../fonts/fredoka-latin-500-normal.woff2) format("woff2")}
+@font-face{font-family:"Fredoka";font-weight:600;font-display:swap;src:url(../fonts/fredoka-latin-600-normal.woff2) format("woff2")}
+@font-face{font-family:"Nunito";font-weight:600;font-display:swap;src:url(../fonts/nunito-latin-600-normal.woff2) format("woff2")}
+@font-face{font-family:"Nunito";font-weight:700;font-display:swap;src:url(../fonts/nunito-latin-700-normal.woff2) format("woff2")}
+@font-face{font-family:"Nunito";font-weight:800;font-display:swap;src:url(../fonts/nunito-latin-800-normal.woff2) format("woff2")}
+
+:root{
+  --ink:#3A2618; --cream:#F4E8D3; --card:#FFF8EA; --shadow:#C9A06F;
+  --red:#C23B2E; --red-d:#8E2A20; --teal:#1F6F5E; --teal-d:#144A3F;
+  --yellow:#F2B63D; --muted:#6B4E37; --blue:#2F5FA8; --purple:#6B3FA0; --dash:#B8956A;
+  --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--cream);color:var(--ink);font-family:"Nunito",system-ui,sans-serif;font-weight:700;font-size:17px;line-height:1.35}
+body{min-height:100vh;min-height:100dvh}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+h1,h2,h3{font-family:"Fredoka",system-ui,sans-serif;font-weight:600;margin:0;line-height:1.15}
+h1{font-size:30px} h2{font-size:22px} h3{font-size:18px}
+svg{display:block;flex:none}
+.no-select{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+
+/* structure */
+#app{max-width:520px;margin:0 auto;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;gap:10px;padding:calc(14px + var(--safe-t)) 16px 8px;position:sticky;top:0;background:var(--cream);z-index:5}
+.topbar h1{font-size:24px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.page{flex:1;padding:8px 18px 28px;display:flex;flex-direction:column;gap:14px}
+.page.with-nav{padding-bottom:calc(96px + var(--safe-b))}
+.kicker{font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted)}
+.banner{background:var(--yellow);border:3px solid var(--ink);border-radius:16px;padding:8px 12px;font-size:14px}
+
+/* boutons */
+.iconbtn{width:44px;height:44px;border-radius:50%;border:3px solid var(--ink);background:var(--card);display:grid;place-items:center;padding:0;box-shadow:0 3px 0 var(--shadow)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;border:3px solid var(--ink);border-radius:18px;background:var(--card);padding:12px 18px;box-shadow:0 4px 0 var(--shadow);font-weight:800}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--shadow)}
+.btn.primary{background:var(--teal);color:#fff;box-shadow:0 4px 0 var(--teal-d)}
+.btn.red{background:var(--red);color:#fff;box-shadow:0 4px 0 var(--red-d)}
+.btn.block{width:100%}
+.btn[disabled]{opacity:.5}
+
+/* cartes */
+.card{min-width:0;background:var(--card);border:3px solid var(--ink);border-radius:22px;box-shadow:0 4px 0 var(--shadow);padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+a.card,button.card{text-decoration:none;color:inherit;text-align:left}
+.state{flex-direction:row;align-items:center;justify-content:space-between}
+.hearts{display:flex;gap:8px;align-items:center}
+
+/* accueil */
+.hello{display:flex;align-items:center;gap:14px;padding-top:6px}
+.head{height:84px;width:auto;filter:drop-shadow(0 4px 0 rgba(201,160,111,.55))}
+.avatar{width:72px;height:72px;border-radius:50%;background:var(--yellow);border:4px solid var(--ink);display:grid;place-items:center}
+.journal{background:var(--red);color:#fff;border-radius:26px;border:4px solid var(--ink);box-shadow:0 6px 0 var(--red-d);padding:14px 20px;display:flex;gap:18px;align-items:center;text-decoration:none}
+.journal h2{font-size:30px}
+.journal small{display:flex;gap:8px;align-items:center;font-size:16px;font-weight:700;margin-top:4px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tile{background:var(--card);border:3px solid var(--ink);border-radius:26px;box-shadow:0 5px 0 var(--shadow);padding:12px 6px 12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-decoration:none;color:inherit;font-family:"Fredoka",sans-serif;font-weight:600;font-size:19px;line-height:1.1;text-align:center;min-height:128px}
+.tile:active{transform:translateY(3px);box-shadow:0 2px 0 var(--shadow)}
+.disc{width:60px;height:60px;border-radius:50%;display:grid;place-items:center}
+
+/* appui long « Parents » */
+.parents{margin:4px auto 0;display:flex;align-items:center;gap:12px;padding:6px 18px 6px 6px;border:3px dashed var(--dash);border-radius:40px;color:var(--muted);background:transparent;touch-action:none}
+.ringwrap{position:relative;width:52px;height:52px}
+.ringwrap svg.ring{position:absolute;inset:0}
+.ringwrap .lockic{position:absolute;inset:0;display:grid;place-items:center}
+
+/* listes et fiches */
+.search{display:flex;align-items:center;gap:10px;background:var(--card);border:3px solid var(--ink);border-radius:18px;padding:8px 14px}
+.search input{border:0;background:transparent;outline:0;flex:1;min-width:0;font-weight:700}
+.list{display:flex;flex-direction:column;gap:12px}
+.row{display:flex;align-items:center;gap:14px}
+.row .grow{flex:1;min-width:0}
+.row h3{overflow:hidden;text-overflow:ellipsis}
+.thumb{width:56px;height:56px;border-radius:16px;border:3px solid var(--ink);background:var(--yellow);display:grid;place-items:center;overflow:hidden}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.chip{display:inline-flex;align-items:center;gap:6px;border:2px solid var(--ink);border-radius:20px;padding:2px 10px;font-size:14px;background:var(--card)}
+.chip.boss{background:var(--yellow)}
+.star{position:absolute;top:10px;right:12px}
+.rel{position:relative}
+.photo{width:100%;aspect-ratio:4/3;border-radius:20px;border:3px solid var(--ink);background:var(--card);display:grid;place-items:center;overflow:hidden;color:var(--muted)}
+.photo img{width:100%;height:100%;object-fit:cover}
+.fiche-meta{display:flex;flex-wrap:wrap;gap:8px}
+.page>*{min-width:0}
+.md{overflow-wrap:anywhere;min-width:0}
+.md .tw{overflow-x:auto;margin:6px 0;-webkit-overflow-scrolling:touch}
+.md pre{overflow-x:auto;background:#EAD9BC;border:2px solid var(--dash);border-radius:12px;padding:10px 12px;margin:8px 0;font:12px/1.25 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:600;white-space:pre;-webkit-overflow-scrolling:touch}
+.md pre code{background:transparent;padding:0;overflow-wrap:normal}
+.md svg.obj{display:inline-block;vertical-align:-4px;margin:0 2px}
+.md h2{font-size:20px;margin:10px 0 4px} .md h3{font-size:17px;margin:8px 0 2px}
+.md p{margin:6px 0} .md ul{margin:6px 0;padding-left:22px} .md li{margin:3px 0}
+.md table{border-collapse:collapse;min-width:100%;font-size:15px}
+.md th,.md td{border:2px solid var(--dash);padding:4px 8px;text-align:left;vertical-align:top;min-width:70px}
+.md blockquote{margin:8px 0;padding:4px 12px;border-left:5px solid var(--yellow);color:var(--muted)}
+.md code{background:#EAD9BC;border-radius:6px;padding:0 4px}
+.md hr{border:0;border-top:3px dashed var(--dash)}
+
+/* navigation MJ */
+.nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:3px solid var(--ink);display:flex;justify-content:center;padding-bottom:var(--safe-b);z-index:9}
+.nav-in{display:flex;width:100%;max-width:520px}
+.nav a{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 0 8px;text-decoration:none;color:var(--muted);font-size:13px;font-weight:800}
+.nav a.on{color:var(--red)}
+
+/* champs */
+textarea.field,input.field{width:100%;border:3px solid var(--ink);border-radius:18px;background:var(--card);padding:12px 14px;outline:0;font-weight:700}
+textarea.field{min-height:140px;resize:vertical}
+.ok{color:var(--teal-d)} .ko{color:var(--red-d)}
+.center{align-items:center;text-align:center}
+.spin{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* carte d'état : équipement et compagnons (cases d'inventaire) */
+.statecard{gap:12px}
+.statecard .state{display:flex;flex-direction:row;align-items:center;justify-content:space-between}
+.gear{display:flex;flex-wrap:wrap;gap:12px 22px;border-top:3px dashed var(--dash);padding-top:10px}
+.slots{display:flex;gap:8px;margin-top:6px;min-height:48px;align-items:center}
+.slot{border:3px solid var(--ink);border-radius:10px;display:grid;place-items:center;box-shadow:inset 0 -4px 0 rgba(0,0,0,.14)}
+.slot.empty{background:transparent;border:3px dashed var(--dash);box-shadow:none}
