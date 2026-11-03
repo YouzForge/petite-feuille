@@ -1,7 +1,7 @@
 // Tous les écrans. Chaque écran renvoie { title, back, nav, node } ; le routeur (main.js) les affiche.
 import { h, icon, hearts, disc, spinner, longPress, ringBadge, speak, objSlot, emptySlot } from "./ui.js";
 import { COLLECTIONS, loadCollection, loadItem, loadHeroState, childView } from "./collections.js";
-import { readText, writeText, uploadBlob, fetchBlob, setFolderPath } from "./graph.js";
+import { readText, writeText, uploadBlob, fetchBlob, setFolderPath, listFolders, isProjectFolder } from "./graph.js";
 import { renderMd, plain, parseDoc } from "./md.js";
 import { login, logout, userName, accountHash } from "./auth.js";
 
@@ -266,23 +266,26 @@ export async function heroineView() {
   return fileView(encodeURIComponent(st.file));
 }
 
-/** Dossier du projet introuvable automatiquement : saisie du chemin une fois (gardé sur ce téléphone). */
+/** Dossier du projet introuvable automatiquement : on le choisit en touchant les dossiers (aucune saisie). */
 export function folderSetupScreen(onDone) {
-  const field = h("input", { class: "field", placeholder: "Documents/…/dossier du projet", "aria-label": "Chemin du dossier du projet" });
-  const msg = h("div", { class: "muted" });
-  return {
-    node: h("div", { class: "page", style: "padding-top:50px" },
-      h("h2", null, "Où est le dossier du projet ?"),
-      h("div", { class: "muted" }, "Je ne l'ai pas trouvé tout seul dans OneDrive. Écris son chemin à partir de la racine de OneDrive (le dossier qui contient 00_REGLES_PROJET.md). Cette question n'est posée qu'une fois sur ce téléphone."),
-      field,
-      h("button", { class: "btn primary block", onclick: async () => {
-        if (!field.value.trim()) return;
-        setFolderPath(field.value);
-        try { const r = await readText("00_REGLES_PROJET.md"); if (r.text == null) throw new Error("Fichier maître introuvable dans ce dossier."); onDone(); }
-        catch (e) { localStorage.removeItem("pf:folder"); msg.className = "ko"; msg.textContent = e.message || "Dossier introuvable."; }
-      } }, "Valider"),
-      msg)
+  const box = h("div", { class: "page", style: "padding-top:40px" });
+  const show = async path => {
+    box.replaceChildren(h("h2", null, "Choisis le dossier du projet"), spinner("…"));
+    let names = [], isProject = false, err = null;
+    try { [names, isProject] = await Promise.all([listFolders(path), isProjectFolder(path)]); } catch (e) { err = e; }
+    const up = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
+    box.replaceChildren(
+      h("h2", null, "Choisis le dossier du projet"),
+      h("div", { class: "muted" }, "Touche les dossiers jusqu'à celui du jeu (il contient le fichier 00_REGLES_PROJET.md). Une seule fois sur ce téléphone."),
+      h("div", { class: "kicker" }, path || "OneDrive"),
+      isProject ? h("button", { class: "btn primary block", onclick: () => { setFolderPath(path); onDone(); } }, "C'est ce dossier") : null,
+      path ? h("button", { class: "btn block", onclick: () => show(up) }, icon("back", 22), "Dossier au-dessus") : null,
+      err ? h("div", { class: "ko" }, "Impossible de lire ce dossier.") : null,
+      h("div", { class: "list" }, names.map(n => h("button", { class: "card", onclick: () => show(path ? path + "/" + n : n) },
+        h("div", { class: "row" }, icon("pin", 22, "var(--ink)"), h("div", { class: "grow" }, h("h3", null, n)), icon("next", 22, "var(--muted)"))))));
   };
+  show("");
+  return { node: box };
 }
 
 export async function fileView(rel) {

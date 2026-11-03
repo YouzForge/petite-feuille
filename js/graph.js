@@ -23,17 +23,31 @@ function itemUrl(rel) {
   return `${G}/me/drive/root:/${enc(rel ? f.path + "/" + rel : f.path)}:`;
 }
 
-/** Cherche le fichier maître dans OneDrive et en déduit le dossier du projet. → true si trouvé. */
-export async function discoverFolder() {
-  const r = await req(`${G}/me/drive/search(q='${encodeURIComponent(MARKER.replace(/\.md$/, ""))}')?$select=name,id,file,parentReference,remoteItem&$top=25`);
+/* ---- retrouver le dossier tout seul : on parcourt des emplacements neutres et on cherche le fichier maître ---- */
+const SCAN_ROOTS = ["Documents/JDR", "Documents", ""];
+const pathUrl = p => p ? `${G}/me/drive/root:/${enc(p)}:` : `${G}/me/drive/root`;
+
+/** Sous-dossiers d'un dossier de OneDrive (chemin depuis la racine, "" = racine). */
+export async function listFolders(path) {
+  const r = await req(pathUrl(path) + "/children?$select=name,folder&$top=200");
   const j = await r.json();
-  for (const x of j.value || []) {
-    if (x.name !== MARKER) continue;
-    const pr = (x.remoteItem && x.remoteItem.parentReference) || x.parentReference;
-    if (pr && pr.driveId && pr.id) {
-      localStorage.setItem(FOLDER_KEY, JSON.stringify({ driveId: pr.driveId, itemId: pr.id }));
-      return true;
-    }
+  return (j.value || []).filter(x => x.folder).map(x => x.name).sort((a, b) => a.localeCompare(b, "fr"));
+}
+
+/** Ce dossier contient-il le fichier maître du projet ? */
+export async function isProjectFolder(path) {
+  try { await req(`${G}/me/drive/root:/${enc((path ? path + "/" : "") + MARKER)}:?$select=id`); return true; }
+  catch (e) { if (e.status === 404) return false; throw e; }
+}
+
+/** Cherche le dossier du projet dans OneDrive. → true si trouvé (et mémorisé). */
+export async function discoverFolder() {
+  for (const root of SCAN_ROOTS) {
+    let names;
+    try { names = await listFolders(root); } catch (e) { if (e.status === 404) continue; throw e; }
+    const hits = await pool(names, async n => (await isProjectFolder(root ? root + "/" + n : n)) ? n : null, 6);
+    const hit = hits.find(Boolean);
+    if (hit) { setFolderPath(root ? root + "/" + hit : hit); return true; }
   }
   return false;
 }
