@@ -1,5 +1,10 @@
 // Icônes (tracés SVG 24x24), issues du kit de composants des maquettes.
 export const ICONS = {
+ "chat": "<path d=\"M4 5h16v11h-9l-4 4v-4H4z\"/><path d=\"M8 9.5h8M8 12.5h5\"/>",
+ "fist": "<path d=\"M7 11V7.5a1.5 1.5 0 0 1 3 0V10M10 10V6.5a1.5 1.5 0 0 1 3 0V10M13 10V7.5a1.5 1.5 0 0 1 3 0V12\"/><path d=\"M7 11a1.5 1.5 0 0 0-3 0v2a7 7 0 0 0 7 7h2a5 5 0 0 0 5-5v-3a1.5 1.5 0 0 0-3 0\"/>",
+ "key": "<circle cx=\"8\" cy=\"12\" r=\"3.5\"/><path d=\"M11.5 12H21M17 12v3.5M20 12v2.5\"/>",
+ "detour": "<path d=\"M5 20v-5a4 4 0 0 1 4-4h8\"/><path d=\"M13 6l4 5-4 5\"/>",
+ "bag": "<path d=\"M6 8h12l1 12H5z\"/><path d=\"M9 8V6a3 3 0 0 1 6 0v2\"/>",
  "book": "<path d=\"M4 5.5C4 4.7 4.7 4 5.5 4H11v15H5.5C4.7 19 4 18.3 4 17.5z\"/><path d=\"M20 5.5C20 4.7 19.3 4 18.5 4H13v15h5.5c.8 0 1.5-.7 1.5-1.5z\"/>",
  "sword": "<path d=\"M20 4L10 14\"/><path d=\"M7 13l4 4\"/><path d=\"M7 17l-3 3\"/>",
  "helmet": "<path d=\"M5 16a7 7 0 0 1 14 0v2H5z\"/><path d=\"M12 9v4\"/>",

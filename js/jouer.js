@@ -3,6 +3,7 @@ import { h, icon, hearts, spinner } from "./ui.js";
 import { COLLECTIONS, loadItem, loadHeroState, heroName } from "./collections.js";
 import { parseSteps, ruleSections, renderMd } from "./md.js";
 import { readText } from "./graph.js";
+import { parseVoie, MAX_VOIES } from "./voies.js";
 
 const go = path => { location.hash = "#" + path; };
 
@@ -89,19 +90,25 @@ function toolsBody(session, onRoll) {
 /* ------------------------------------------------------------------ une étape */
 function stepCard(step, onAsk) {
   const kids = [h("h2", { style: "font-size:30px" }, step.title)];
+  let nbVoies = 0;
   for (const f of step.fields) {
     const key = f.label.toLowerCase();
     const list = f.items.length ? h("ul", { class: "steplist" }, f.items.map(i => h("li", null, i))) : null;
     const text = f.text ? h("div", null, f.text) : null;
-    let m;
+    let v;
     if (/^[àa] trouver/.test(key)) {
       kids.push(h("div", { style: "font-size:19px" }, h("span", { style: "color:var(--red);font-weight:800" }, "À trouver : "), f.text));
-    } else if ((m = key.match(/^voie\s*(\d)/))) {
-      const paren = (f.label.match(/\(([^)]+)\)/) || [, ""])[1];
-      const pill = m[1] === "1" ? (paren ? paren + (/loup/i.test(paren) ? " · 2d6" : "") : "") : m[1] === "2" ? "Réponse automatique" : paren;
-      const cls = m[1] === "1" ? "voie v1" : m[1] === "2" ? "voie v2" : "voie";
-      kids.push(h("div", { class: cls },
-        h("div", { class: "voie-head" }, icon(m[1] === "2" ? "friends" : "search", 22, "currentColor"), h("strong", null, f.label.replace(/\s*\([^)]*\)\s*$/, "")), pill ? h("span", { class: "pill" }, pill) : null),
+    } else if ((v = parseVoie(f.label))) {
+      nbVoies++;
+      const pill = v.verrou ? "Pas encore" + (v.pouvoir ? " · " + v.pouvoir : "")
+        : v.pouvoir ? v.pouvoir + (/loup|[ée]p[ée]e|combat|pouvoir/i.test(v.pouvoir) ? " · 2d6" : "")
+        : "Automatique";
+      kids.push(h("div", { class: "voie vt-" + v.type.cle + (v.verrou ? " verrou" : "") },
+        h("div", { class: "voie-head" },
+          icon(v.verrou ? "lock" : v.type.icone, 24, "currentColor"),
+          h("strong", null, v.titre),
+          v.type.nom ? h("span", { class: "vtype" }, v.type.nom) : null,
+          h("span", { class: "pill" + (v.verrou ? " pill-lock" : "") }, pill)),
         text, list));
     } else if (/^si elle h[ée]site/.test(key)) {
       kids.push(h("div", { class: "tip" }, h("strong", null, "Si elle hésite : "), f.text, list));
@@ -109,6 +116,7 @@ function stepCard(step, onAsk) {
       kids.push(h("div", { class: "card" }, h("strong", null, f.label), text, list));
     }
   }
+  if (nbVoies > MAX_VOIES) kids.push(h("div", { style: "font-size:15px;color:var(--muted)" }, "Plus de " + MAX_VOIES + " voies dans cette étape : c'est beaucoup pour une enfant de 5 ans (à alléger)."));
   kids.push(h("button", { class: "ask", onclick: onAsk }, "Que fais-tu ?"));
   return h("div", { class: "card stepcard" }, kids);
 }
