@@ -150,3 +150,30 @@ export function parseSteps(body) {
 export function ruleSections(text, wanted) {
   return text.split(/\n(?=### )/).filter(p => wanted.some(w => p.startsWith("### " + w)));
 }
+
+/* ------------------------------------------------------------------ écriture (formulaires de fiches) */
+const flat = v => String(v ?? "").replace(/\s*\n\s*/g, " ").trim();
+
+/** Remet un en-tête de champs (R16) devant un corps de texte. L'ordre des champs est celui de l'objet. */
+export function serializeDoc(meta, body) {
+  const head = Object.entries(meta).map(([k, v]) => {
+    const val = typeof v === "boolean" || typeof v === "number" ? String(v) : flat(v);
+    return val === "" ? `${k}:` : `${k}: ${val}`;
+  }).join("\n");
+  return `---\n${head}\n---\n${body.replace(/^\n+/, "")}`;
+}
+
+/** Texte d'une section « ## Titre » du corps (sans le titre). */
+export function getSection(body, title) {
+  const re = new RegExp(`^## ${title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\n([\\s\\S]*?)(?=\\n## |(?![\\s\\S]))`, "m");
+  const m = body.match(re);
+  return m ? m[1].trim() : "";
+}
+
+/** Remplace (ou ajoute à la fin) la section « ## Titre » ; texte vide = section retirée. */
+export function setSection(body, title, text) {
+  const re = new RegExp(`^## ${title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\n[\\s\\S]*?(?=\\n## |(?![\\s\\S]))`, "m");
+  const block = text.trim() ? `## ${title}\n${text.trim()}\n` : "";
+  if (re.test(body)) return body.replace(re, block).replace(/\n{3,}/g, "\n\n").trimEnd() + "\n";
+  return block ? body.trimEnd() + "\n\n" + block : body;
+}

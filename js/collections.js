@@ -16,6 +16,24 @@ export const COLLECTIONS = {
     child: { label: "Mes amis", color: "var(--yellow)", route: "amis" },
     empty: "Aucun personnage pour l'instant."
   },
+  objet: {
+    id: "objet", label: "Objets", singular: "objet", icon: "sword",
+    folder: "05_Journal/Objets", exclude: /^(00_|LISEZMOI)/i,
+    child: { label: "Mes objets", color: "var(--teal)", route: "objets" },
+    empty: "Aucun objet pour l'instant."
+  },
+  lieu: {
+    id: "lieu", label: "Lieux", singular: "lieu", icon: "pin",
+    folder: "05_Journal/Lieux", exclude: /^(00_|LISEZMOI)/i,
+    child: { label: "Mes lieux", color: "var(--blue)", route: "lieux" },
+    empty: "Aucun lieu pour l'instant."
+  },
+  compagnon: {
+    id: "compagnon", label: "Compagnons", singular: "compagnon", icon: "paw",
+    folder: "03_Personnages/Compagnons", exclude: /^(00_|LISEZMOI)/i,
+    child: { label: "Mes compagnons", color: "var(--red)", route: "compagnons" },
+    empty: "Aucun compagnon pour l'instant."
+  },
   prochaine: {
     id: "prochaine", label: "Histoires en attente", icon: "book",
     folder: "02_Campagne/Prochaines", exclude: /^(00_|LISEZMOI)/i,
@@ -28,6 +46,19 @@ export const COLLECTIONS = {
   }
 };
 
+/** « 50,50 » → { x, y } (0 à 100), sinon null. */
+export function parseCarte(v) {
+  const m = String(v ?? "").match(/(-?\d+(?:\.\d+)?)\s*[,;]\s*(-?\d+(?:\.\d+)?)/);
+  return m ? { x: Math.max(0, Math.min(100, Number(m[1]))), y: Math.max(0, Math.min(100, Number(m[2]))) } : null;
+}
+/** Type d'un compagnon : "vole", "nage" ou "terre". */
+export function typeCompagnon(meta) {
+  const t = String(meta.categorie || meta.type_compagnon || "").toLowerCase();
+  if (/vol|oiseau|air/.test(t)) return "vole";
+  if (/nag|aqua|eau|plong/.test(t)) return "nage";
+  return "terre";
+}
+
 /** Un élément de collection, prêt à afficher. */
 export function toItem(col, file, text) {
   const d = parseDoc(text);
@@ -36,7 +67,11 @@ export function toItem(col, file, text) {
     col: col.id, file, rel: `${col.folder}/${file}`,
     name: String(d.meta.nom || d.meta.titre || d.title || humanize(file)),
     meta: d.meta, body: d.body,
-    coeurs: intOf(d.meta.coeurs), boss: isTrue(d.meta.boss), photo
+    coeurs: intOf(d.meta.coeurs), boss: isTrue(d.meta.boss), photo,
+    apparence: String(d.meta.apparence || "").trim(),
+    etat: String(d.meta.etat || "").trim(),
+    carte: parseCarte(d.meta.carte),
+    type: typeCompagnon(d.meta)
   };
 }
 
@@ -80,7 +115,7 @@ export async function findHeroFile() {
 
 /** État de l'héroïne (prénom, cœurs, armure, équipement) lu dans sa fiche. */
 export async function loadHeroState() {
-  const empty = { prenom: "", coeurs: 3, armure: 1, equip: [], stale: false, found: false, file: null };
+  const empty = { prenom: "", coeurs: 3, armure: 1, equip: [], compagnons: [], stale: false, found: false, file: null };
   const file = await findHeroFile();
   if (!file) return empty;
   const r = await readText(file);
@@ -100,5 +135,7 @@ export async function loadHeroState() {
     const o = findObjet(line);
     if (o && o.equip && !equip.some(e => e.id === o.id)) equip.push(o);
   }
-  return { prenom, coeurs, armure, equip, stale: r.stale, found: true, file };
+  let compagnons = [];
+  try { const ls = await listDir("03_Personnages/Compagnons"); compagnons = ls.data.filter(f => !f.dir && /\.md$/i.test(f.name) && !/^(00_|LISEZMOI)/i.test(f.name)).map(f => humanize(f.name)); } catch { /* pas de dossier : aucun compagnon */ }
+  return { prenom, coeurs, armure, equip, compagnons, stale: r.stale, found: true, file };
 }

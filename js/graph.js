@@ -12,8 +12,23 @@ export const hasFolder = () => !!folderCfg();
 export const forgetFolder = () => localStorage.removeItem(FOLDER_KEY);
 export function setFolderPath(path) { localStorage.setItem(FOLDER_KEY, JSON.stringify({ path: path.trim().replace(/^\/+|\/+$/g, "") })); }
 
+/* Le dossier du journal porte le prénom de l'enfant : le code ne connaît que « 05_Journal », le vrai nom est retrouvé dans la racine du projet. */
+const ALIAS_KEY = "pf1:alias";
+let ALIAS = (() => { try { return JSON.parse(localStorage.getItem(ALIAS_KEY)) || {}; } catch { return {}; } })();
+const applyAlias = rel => { const i = rel.indexOf("/"); const head = i < 0 ? rel : rel.slice(0, i); return ALIAS[head] ? ALIAS[head] + (i < 0 ? "" : rel.slice(i)) : rel; };
+export async function resolveAliases() {
+  try {
+    const r = await req(itemUrl("") + "/children?$select=name,folder&$top=200");
+    const j = await r.json();
+    const jr = (j.value || []).find(x => x.folder && /^05_Journal/i.test(x.name));
+    ALIAS = jr && jr.name !== "05_Journal" ? { "05_Journal": jr.name } : {};
+    localStorage.setItem(ALIAS_KEY, JSON.stringify(ALIAS));
+  } catch { /* hors ligne : on garde le dernier alias connu */ }
+}
+
 /** Adresse Graph d'un élément du dossier projet. rel = chemin relatif ("04_Bestiaire/Squelette.md"), "" = la racine. */
 function itemUrl(rel) {
+  rel = applyAlias(rel);
   const f = folderCfg();
   if (!f) { const e = new Error("Dossier du projet non configuré"); e.noFolder = true; throw e; }
   if (f.driveId) {

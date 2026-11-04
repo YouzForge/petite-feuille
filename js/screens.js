@@ -1,10 +1,13 @@
 // Tous les écrans. Chaque écran renvoie { title, back, nav, node } ; le routeur (main.js) les affiche.
 import { h, icon, hearts, disc, spinner, longPress, ringBadge, speak, objSlot, emptySlot } from "./ui.js";
 import { COLLECTIONS, loadCollection, loadItem, loadHeroState, childView } from "./collections.js";
-import { readText, writeText, uploadBlob, fetchBlob, setFolderPath, listFolders, isProjectFolder } from "./graph.js";
+import { readText, writeText, setFolderPath, listFolders, isProjectFolder } from "./graph.js";
 import { renderMd, plain, parseDoc } from "./md.js";
 import { login, logout, userName, accountHash } from "./auth.js";
 import { getSession } from "./jouer.js";
+import { photoBox, sendPhoto } from "./photo.js";
+import { ideaPanel, secondaryPanel, SECONDARY } from "./pages.js";
+import { listRoute } from "./forms.js";
 import { parseSteps } from "./md.js";
 
 const go = path => { location.hash = "#" + path; };
@@ -47,7 +50,9 @@ export function reconnectScreen() {
 /** Carte d'état de l'héroïne : cœurs, armure, équipement porté et place pour les compagnons. */
 function stateCard(st, big = true) {
   const companions = st.compagnons || [];                       // pas encore de collection « compagnons » : cases réservées
-  const slots = companions.length ? companions.map(() => emptySlot("paw")) : [emptySlot("paw"), emptySlot("paw"), emptySlot("paw")];
+  const slots = companions.length
+    ? companions.slice(0, 6).map(n => { const sl = h("div", { class: "slot", style: "width:48px;height:48px;background:var(--teal)", role: "img", "aria-label": n, title: n }); sl.append(icon("paw", 27, "#fff", 2.2)); return sl; })
+    : [emptySlot("paw"), emptySlot("paw"), emptySlot("paw")];
   return h("div", { class: "card statecard" },
     h("div", { class: "state" },
       hearts(st.coeurs, big ? 34 : 28, 200),
@@ -59,11 +64,11 @@ function stateCard(st, big = true) {
 
 /* ------------------------------------------------------------------ mode enfant */
 const TILES = [
-  { name: "Mes objets", icon: "sword", color: "var(--teal)", to: "/child/bientot/Mes objets" },
-  { name: "Mes lieux", icon: "pin", color: "var(--blue)", to: "/child/bientot/Mes lieux" },
+  { name: "Mes objets", icon: "sword", color: "var(--teal)", to: "/child/c/objet" },
+  { name: "Mes lieux", icon: "pin", color: "var(--blue)", to: "/child/c/lieu" },
   { name: "Mes monstres", icon: "monster", color: "var(--purple)", to: "/child/c/creature" },
   { name: "Mes amis", icon: "friends", color: "var(--yellow)", to: "/child/c/personnage" },
-  { name: "Mes compagnons", icon: "paw", color: "var(--red)", to: "/child/bientot/Mes compagnons" },
+  { name: "Mes compagnons", icon: "paw", color: "var(--red)", to: "/child/c/compagnon" },
   { name: "Mes outils", icon: "tools", color: "var(--muted)", to: "/child/outils" }
 ];
 
@@ -83,7 +88,7 @@ export async function childHome() {
         h("img", { class: "head", src: "img/avatar.png", alt: "" }),
         h("div", null, h("h1", null, st.prenom ? `Bonjour ${st.prenom} !` : "Bonjour !"), h("div", { class: "muted" }, "Apprentie aventurière"))),
       stateCard(st),
-      link("/child/bientot/Mon journal", "journal",
+      link("/child/journal", "journal",
         icon("book", 56, "#fff", 2),
         h("div", null, h("h2", null, "Mon journal"), h("small", null, icon("speaker", 22, "#fff"), "Écouter mon aventure"))),
       h("div", { class: "tiles" }, TILES.map(t => link(t.to, "tile", disc(t.icon, t.color, 60), t.name))),
@@ -102,25 +107,6 @@ export function soon(name) {
 }
 
 /* ------------------------------------------------------------------ outils de l'enfant : appareil photo */
-function resize(file, max = 1600) {
-  return new Promise((res, rej) => {
-    const img = new Image();
-    img.onload = () => {
-      const k = Math.min(1, max / Math.max(img.width, img.height));
-      const c = document.createElement("canvas");
-      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
-      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-      c.toBlob(b => b ? res({ blob: b, url: c.toDataURL("image/jpeg", .5) }) : rej(new Error("Photo illisible")), "image/jpeg", .82);
-    };
-    img.onerror = () => rej(new Error("Photo illisible"));
-    img.src = URL.createObjectURL(file);
-  });
-}
-const stamp = () => {
-  const d = new Date(), p = n => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
-};
-
 export function tools() {
   const input = h("input", { type: "file", accept: "image/*", capture: "environment", style: "display:none" });
   const status = h("div", { class: "muted center" });
@@ -129,10 +115,8 @@ export function tools() {
     const f = input.files[0]; if (!f) return;
     status.className = "muted center"; status.textContent = "Envoi de la photo…";
     try {
-      const r = await resize(f);
+      const r = await sendPhoto(f);
       prev.src = r.url; prev.style.display = "block";
-      const name = stamp() + ".jpg";
-      await uploadBlob("08_Photos/" + name, r.blob, "image/jpeg");
       status.className = "ok center"; status.textContent = "Photo rangée !";
     } catch (e) {
       status.className = "ko center";
@@ -150,12 +134,6 @@ export function tools() {
 }
 
 /* ------------------------------------------------------------------ collections (modèle unique, R14) */
-function photoBox(rel, cls = "photo") {
-  const box = h("div", { class: cls }, icon("image", 40, "var(--muted)"));
-  fetchBlob(rel).then(b => { box.innerHTML = ""; box.append(h("img", { src: URL.createObjectURL(b), alt: "" })); }).catch(() => { /* garde l'icône */ });
-  return box;
-}
-
 function chips(item, col) {
   const out = [];
   if (col.id === "creature") {
@@ -195,8 +173,9 @@ export async function collectionList(colId, mode) {
     h("input", { type: "search", placeholder: "Chercher…", "aria-label": "Chercher", oninput: e => draw(e.target.value) }));
   draw("");
   return {
-    title, back: mode === "child" ? "/" : "/mj/monde",
+    title, back: mode === "child" ? "/" : colId === "histoire" || colId === "prochaine" ? "/mj/histoires" : "/mj/monde",
     nav: mode === "mj" ? (colId === "histoire" || colId === "prochaine" ? "histoires" : "monde") : null,
+    action: mode === "mj" && ["creature", "personnage", "compagnon"].includes(colId) ? link(`/mj/nouveau/${colId}`, "iconbtn plus", icon("plus", 26, "#fff", 3)) : null,
     node: h("div", { class: "page" + (mode === "mj" ? " with-nav" : "") }, staleBanner(stale), items.length > 5 || mode === "mj" ? search : null, list)
   };
 }
@@ -217,10 +196,18 @@ export async function collectionFiche(colId, file, mode) {
     if (v.faits) nodes.push(h("div", { class: "card md" }, h("h3", null, "Ce que j'ai fait"), h("div", { html: renderMd(v.faits) })));
   } else {
     if (colId === "prochaine") nodes.push(link("/mj/jouer/" + encodeURIComponent(item.file), "btn primary block", icon("dice", 26, "#fff"), "Jouer cette histoire"));
-    nodes.push(h("div", { class: "card md", html: renderMd(item.body) }));
+    const main = [h("div", { class: "card md", html: renderMd(item.body) })];
+    if (SECONDARY[colId]) {
+      const pane = h("div", { class: "list" }, main);
+      const t1 = h("button", { class: "tab on" }, "Fiche"), t2 = h("button", { class: "tab" }, SECONDARY[colId]);
+      t1.addEventListener("click", () => { t1.className = "tab on"; t2.className = "tab"; pane.replaceChildren(...main); });
+      t2.addEventListener("click", async () => { t2.className = "tab on"; t1.className = "tab"; pane.replaceChildren(h("div", { class: "muted center" }, "Recherche dans les histoires…")); pane.replaceChildren(await secondaryPanel(item, colId)); });
+      nodes.push(h("div", { class: "tabs" }, t1, t2), pane);
+    } else nodes.push(...main);
+    if (SECONDARY[colId]) nodes.push(link(`/mj/modifier/${colId}/${encodeURIComponent(item.file)}`, "btn block", icon("note", 24), "Modifier la fiche"));
   }
   return {
-    title: item.name, back: `${mode === "child" ? "/child" : "/mj"}/c/${colId}`,
+    title: item.name, back: mode === "child" ? `/child/c/${colId}` : listRoute(colId),
     nav: mode === "mj" ? (colId === "histoire" || colId === "prochaine" ? "histoires" : "monde") : null,
     node: h("div", { class: "page" + (mode === "mj" ? " with-nav" : "") }, nodes)
   };
@@ -259,21 +246,6 @@ export async function mjStories() {
   return {
     title: "Histoires", nav: "histoires",
     node: h("div", { class: "page with-nav" }, staleBanner(wait.stale || played.stale), ...sect("En attente", COLLECTIONS.prochaine, wait.items), ...sect("Jouées", COLLECTIONS.histoire, played.items))
-  };
-}
-
-export function mjWorld() {
-  const item = (name, sub, ic, to) => to
-    ? link(to, "card", h("div", { class: "row" }, h("div", { class: "thumb" }, icon(ic, 28, "var(--ink)")), h("div", { class: "grow" }, h("h3", null, name), h("div", { class: "muted" }, sub)), icon("next", 22, "var(--muted)")))
-    : h("div", { class: "card", style: "opacity:.55" }, h("div", { class: "row" }, h("div", { class: "thumb", style: "background:var(--card)" }, icon(ic, 28, "var(--muted)")), h("div", { class: "grow" }, h("h3", null, name), h("div", { class: "muted" }, "Bientôt"))));
-  return {
-    title: "Monde", nav: "monde",
-    node: h("div", { class: "page with-nav" },
-      item("Fiche de l'héroïne", "Cœurs, pouvoirs, objets", "helmet", "/mj/heroine"),
-      item("Personnages", "Ceux rencontrés en chemin", "friends", "/mj/c/personnage"),
-      item("Bestiaire", "Les créatures et leurs cartons", "monster", "/mj/c/creature"),
-      item("Règles complètes", "Le fichier maître du projet", "book", "/mj/f/00_REGLES_PROJET.md"),
-      item("Carte du monde", "", "map"), item("Lieux et objets", "", "pin"), item("Compagnons", "", "paw"), item("Photos à classer", "", "image"))
   };
 }
 
@@ -343,8 +315,18 @@ export async function mjNotes() {
     } catch (e) { msg.className = "ko"; msg.textContent = e.message || "Échec de l'enregistrement."; }
     btn.disabled = false;
   });
+  const notesPane = h("div", { class: "list" }, field, btn, msg, h("div", { class: "kicker" }, "Notes déjà enregistrées"), shown);
+  const ideaPane = h("div", { class: "list" });
+  let ideaBuilt = false;
+  const t1 = h("button", { class: "tab on" }, "Mes notes"), t2 = h("button", { class: "tab" }, "Idée du soir");
+  const pane = h("div", null, notesPane);
+  t1.addEventListener("click", () => { t1.className = "tab on"; t2.className = "tab"; pane.replaceChildren(notesPane); });
+  t2.addEventListener("click", async () => {
+    t2.className = "tab on"; t1.className = "tab"; pane.replaceChildren(ideaPane);
+    if (!ideaBuilt) { ideaBuilt = true; ideaPane.append(await ideaPanel(NOTES, showText)); }
+  });
   return {
     title: "Notes", nav: "notes",
-    node: h("div", { class: "page with-nav" }, staleBanner(cur.stale), field, btn, msg, h("div", { class: "kicker" }, "Notes déjà enregistrées"), shown)
+    node: h("div", { class: "page with-nav" }, staleBanner(cur.stale), h("div", { class: "tabs" }, t1, t2), pane)
   };
 }

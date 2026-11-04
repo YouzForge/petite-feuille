@@ -1,10 +1,12 @@
 // Routeur et coque de l'application.
 import { initAuth, isSignedIn, isAllowed } from "./auth.js";
-import { hasFolder, discoverFolder } from "./graph.js";
+import { hasFolder, discoverFolder, resolveAliases } from "./graph.js";
 import { h, icon, spinner, errorBox } from "./ui.js";
 import * as S from "./screens.js";
 import { jouerScreen } from "./jouer.js";
 import { recapScreen } from "./recap.js";
+import * as P from "./pages.js";
+import { formScreen } from "./forms.js";
 
 const root = document.getElementById("app");
 const dec = decodeURIComponent;
@@ -21,12 +23,25 @@ const ROUTES = [
   [/^\/$/, () => S.childHome(), "child"],
   [/^\/child\/bientot\/(.+)$/, n => S.soon(dec(n)), "child"],
   [/^\/child\/outils$/, () => S.tools(), "child"],
+  [/^\/child\/journal$/, () => P.journalScreen(), "child"],
+  [/^\/child\/carte$/, () => P.mapScreen("child"), "child"],
+  [/^\/child\/c\/objet$/, () => P.childObjets(), "child"],
+  [/^\/child\/c\/lieu$/, () => P.childLieux(), "child"],
+  [/^\/child\/c\/compagnon$/, () => P.childCompagnons(), "child"],
   [/^\/child\/c\/([a-z]+)$/, c => S.collectionList(c, "child"), "child"],
   [/^\/child\/c\/([a-z]+)\/(.+)$/, (c, f) => S.collectionFiche(c, f, "child"), "child"],
   [/^\/mj\/ce-soir$/, () => S.mjTonight(), "mj"],
   [/^\/mj\/histoires$/, () => S.mjStories(), "mj"],
-  [/^\/mj\/monde$/, () => S.mjWorld(), "mj"],
+  [/^\/mj\/monde$/, () => P.mjWorldScreen(), "mj"],
+  [/^\/mj\/lieux$/, () => P.lieuxObjets("lieux"), "mj"],
+  [/^\/mj\/objets$/, () => P.lieuxObjets("objets"), "mj"],
+  [/^\/mj\/carte$/, () => P.mapScreen("mj"), "mj"],
+  [/^\/mj\/photos$/, () => P.photosScreen(), "mj"],
+  [/^\/mj\/c\/compagnon$/, () => P.mjCompagnons(), "mj"],
+  [/^\/mj\/nouveau\/([a-z]+)$/, c => formScreen(c, null), "mj"],
+  [/^\/mj\/modifier\/([a-z]+)\/(.+)$/, (c, f) => formScreen(c, dec(f)), "mj"],
   [/^\/mj\/notes$/, () => S.mjNotes(), "mj"],
+  [/^\/mj\/c\/(lieu|objet)$/, c => P.lieuxObjets(c === "lieu" ? "lieux" : "objets"), "mj"],
   [/^\/mj\/c\/([a-z]+)$/, c => S.collectionList(c, "mj"), "mj"],
   [/^\/mj\/c\/([a-z]+)\/(.+)$/, (c, f) => S.collectionFiche(c, f, "mj"), "mj"],
   [/^\/mj\/jouer\/(.+)$/, f => jouerScreen(f), "mj"],
@@ -42,6 +57,7 @@ function chrome(screen, mode) {
     const bar = h("div", { class: "topbar" });
     if (screen.back) bar.append(h("a", { class: "iconbtn", href: "#" + screen.back, "aria-label": "Retour" }, icon("back", 24)));
     bar.append(h("h1", null, screen.title || ""));
+    if (screen.action) bar.append(screen.action);
     if (mode === "mj") bar.append(h("button", { class: "iconbtn", "aria-label": "Retour au mode enfant", onclick: () => { sessionStorage.removeItem("pf_mj"); location.hash = "#/"; } }, icon("user", 24)));
     frag.append(bar);
   } else if (mode === "mj") {
@@ -74,6 +90,7 @@ async function render() {
     if (!found) { root.replaceChildren(chrome(S.folderSetupScreen(() => render()), "child")); return; }
   }
 
+  await resolveAliases();
   let match = null;
   for (const [re, fn, mode] of ROUTES) { const m = path.match(re); if (m) { match = { fn, mode, args: m.slice(1) }; break; } }
   if (!match) { location.hash = "#/"; return; }

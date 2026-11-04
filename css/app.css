@@ -171,3 +171,39 @@ textarea.field{min-height:140px;resize:vertical}
 .verdict{min-height:46px;display:inline-block;border-radius:24px;padding:6px 22px;font:600 28px Fredoka}
 .verdict.win{background:var(--teal);color:#fff}
 .verdict.miss{background:#EADBC0;color:var(--muted)}
+
+/* formulaires de fiches */
+.checkrow{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--card);border:3px solid var(--ink);border-radius:18px;padding:10px 14px;font-weight:800}
+.cbox{width:30px;height:30px;border-radius:8px;border:3px solid var(--ink);background:#fff;display:grid;place-items:center;flex:none}
+.cbox svg{visibility:hidden}
+.checkrow[aria-pressed="true"] .cbox{background:var(--red)}
+.checkrow[aria-pressed="true"] .cbox svg{visibility:visible}
+
+/* pages des collections */
+.sbtn{width:48px;height:48px;border-radius:50%;border:3px solid var(--ink);background:var(--teal);display:grid;place-items:center;padding:0;flex:none;box-shadow:0 3px 0 var(--teal-d)}
+.bigcard{width:100%;text-align:left;font:inherit;color:inherit}
+.bigcard h2{font-size:24px}
+.bigcard.faded{opacity:.72}
+.card.dashed{border-style:dashed;border-color:var(--dash);background:transparent;box-shadow:none}
+.mapcta{background:var(--blue);color:#fff;text-decoration:none;box-shadow:0 5px 0 #1E3F74}
+.mapcta h2,.mapcta h3{color:#fff}
+.journal-text{font-size:19px}
+.bottombar{position:sticky;bottom:0;padding:10px 0 calc(8px + var(--safe-b));background:linear-gradient(transparent,var(--cream) 30%)}
+.compa{display:flex;flex-direction:column;align-items:center;gap:6px;background:transparent;border:0;padding:0;width:104px}
+.thumb.big{width:92px;height:92px;border-radius:50%;border-width:4px}
+.wtile{align-items:flex-start;text-decoration:none;color:inherit;gap:6px}
+a.iconbtn.plus,button.iconbtn.plus{background:var(--teal);box-shadow:0 3px 0 var(--teal-d);text-decoration:none}
+.ptile{position:relative;display:flex;flex-direction:column;gap:4px;align-items:stretch;background:transparent;border:3px dashed var(--dash);border-radius:20px;padding:6px;text-align:center}
+.ptile.on{border:3px solid var(--red);background:var(--card)}
+.ptile .tick{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:50%;background:var(--red);display:grid;place-items:center}
+.photo.sq{aspect-ratio:1/1;border-radius:14px}
+
+/* carte du monde */
+.mapbox{position:relative}
+.mapview{position:relative;width:100%;aspect-ratio:1/1.1;overflow:hidden;border:4px solid var(--ink);border-radius:24px;background:#EAD6B0;touch-action:none;box-shadow:0 4px 0 var(--shadow)}
+.mapworld{position:absolute;inset:0;transform-origin:0 0;--z:1}
+.mpin{position:absolute;transform:translate(-50%,-100%) scale(calc(1 / var(--z)));transform-origin:50% 100%;display:flex;flex-direction:column;align-items:center;pointer-events:none}
+.mpin.q{transform:translate(-50%,-50%) scale(calc(1 / var(--z)))}
+.mlabel{font:600 14px Fredoka;background:rgba(255,248,234,.92);border-radius:10px;padding:0 6px;white-space:nowrap;margin-top:-2px}
+.mpin.home .mlabel{font-size:17px}
+.mapbtns{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:8px}

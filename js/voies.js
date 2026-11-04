@@ -48,7 +48,7 @@ export function parseVoie(label) {
     if (t && plat(morceaux[0]).split(/\s+/).length <= 3) { type = t; titre = morceaux.slice(1).join(" · "); }
   }
   if (!type) type = typeDe(reste) || TYPE_DEFAUT;
-  // le pouvoir demandé : « (Œil du loup) » ; « (pas encore : Crochetage) » = pouvoir que Mila n'a pas
+  // le pouvoir demandé : « (Œil du loup) » ; « (pas encore : Crochetage) » = pouvoir que l'héroïne n'a pas
   let pouvoir = "", verrou = false;
   const vm = paren.match(/^pas encore\s*[:·-]?\s*(.*)$/i);
   if (vm) { verrou = true; pouvoir = vm[1].trim(); } else pouvoir = paren;
