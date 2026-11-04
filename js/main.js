@@ -1,5 +1,5 @@
 // Routeur et coque de l'application.
-import { initAuth, isSignedIn, isAllowed } from "./auth.js";
+import { initAuth, isSignedIn, isAllowed, autoLogin } from "./auth.js";
 import { hasFolder, discoverFolder, resolveAliases } from "./graph.js";
 import { h, icon, spinner, errorBox } from "./ui.js";
 import * as S from "./screens.js";
@@ -79,14 +79,14 @@ async function render() {
   const mine = ++token;
   let path = location.hash.replace(/^#/, "") || "/";
   if (/^(code|state|error)=/.test(path)) path = "/";           // retour de connexion Microsoft
-  if (!isSignedIn()) { root.replaceChildren(chrome(S.loginScreen(), "child")); return; }
+  if (!isSignedIn()) { if (autoLogin()) { root.replaceChildren(spinner("Connexion…")); return; } root.replaceChildren(chrome(S.loginScreen(), "child")); return; }
 
   if (!(await isAllowed())) { if (mine === token) root.replaceChildren(chrome(await S.deniedScreen(), "child")); return; }
 
   if (!hasFolder()) {                                           // première ouverture sur ce téléphone : on retrouve le dossier du projet
     root.replaceChildren(spinner("Recherche du dossier du projet…"));
     let found = false;
-    try { found = await discoverFolder(); } catch (e) { if (e.auth || e.status === 401) { root.replaceChildren(chrome(S.reconnectScreen(), "child")); return; } }
+    try { found = await discoverFolder(); } catch (e) { if (e.auth || e.status === 401) { if (autoLogin()) { root.replaceChildren(spinner("Connexion…")); return; } root.replaceChildren(chrome(S.reconnectScreen(), "child")); return; } }
     if (!found) { root.replaceChildren(chrome(S.folderSetupScreen(() => render()), "child")); return; }
   }
 
@@ -106,7 +106,7 @@ async function render() {
     root.replaceChildren(chrome(screen, match.mode));
   } catch (e) {
     if (mine !== token) return;
-    if (e.auth || e.status === 401) { root.replaceChildren(chrome(S.reconnectScreen(), "child")); return; }
+    if (e.auth || e.status === 401) { if (autoLogin()) { root.replaceChildren(spinner("Connexion…")); return; } root.replaceChildren(chrome(S.reconnectScreen(), "child")); return; }
     root.replaceChildren(chrome({ title: "Oups", back: match.mode === "mj" ? "/mj/ce-soir" : "/", node: h("div", { class: "page" }, errorBox(e, render)) }, match.mode));
   }
 }

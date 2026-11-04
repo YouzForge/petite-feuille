@@ -10,12 +10,29 @@ export async function initAuth() {
     cache: { cacheLocation: "localStorage" }
   });
   await app.initialize();
+  gardeCleDeChiffrement();
   try {
     const r = await app.handleRedirectPromise();
     if (r && r.account) { account = r.account; localStorage.pf_lastLogin = String(Date.now()); }
   } catch (e) { console.warn("Retour de connexion en erreur", e); }
   account = account || app.getAllAccounts()[0] || null;
-  if (account) app.setActiveAccount(account);
+  if (account) { app.setActiveAccount(account); try { localStorage.pf_lastUser = account.username; } catch { /* tant pis */ } }
+  gardeCleDeChiffrement();
+  // à chaque retour dans l'application, on renouvelle la durée de vie de la clé
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) gardeCleDeChiffrement(); });
+}
+
+/* POURQUOI TANT DE RECONNEXIONS : depuis la version 4, MSAL chiffre ses jetons gardés dans le téléphone, et range la clé de
+   chiffrement dans un cookie « de session » (sans date de fin). Sur iPhone, ce cookie disparaît dès que l'application est fermée
+   ou vidée de la mémoire ; les jetons deviennent alors illisibles et il faut se reconnecter. On donne donc à ce cookie une vraie
+   durée de vie (30 jours) : le jeton, lui, reste limité à 24 h côté Microsoft, ce qui donne une seule reconnexion par jour. */
+function gardeCleDeChiffrement() {
+  try {
+    const c = document.cookie.split("; ").find(x => x.startsWith("msal.cache.encryption="));
+    if (!c) return;
+    const fin = new Date(Date.now() + 30 * 864e5).toUTCString();
+    document.cookie = `${c}; path=/; SameSite=None; Secure; expires=${fin}`;
+  } catch { /* tant pis : on se reconnectera */ }
 }
 
 export const isSignedIn = () => !!account;
@@ -33,20 +50,49 @@ export async function isAllowed() {
 }
 export const userName = () => (account && account.username) || "";
 
+let jeton = null, enCours = null;   // jeton gardé en mémoire (valable ~1 h) et demande en cours (une seule à la fois)
+
+/** Erreurs qui veulent vraiment dire « Microsoft demande de se reconnecter » (et pas « le réseau a eu un hoquet »). */
+const faut_se_reconnecter = e => !!e && (e.name === "InteractionRequiredAuthError"
+  || /interaction_required|login_required|consent_required|invalid_grant|no_account|bad_token|refresh_token_expired|user_login_error/i.test(String(e.errorCode || e.subError || "") + " " + String(e.message || "")));
+
 export async function getToken() {
   if (window.PF_TEST) return "test-token";
   if (!account) throw authError("Pas connecté");
-  try {
-    const r = await app.acquireTokenSilent({ scopes: C.scopes, account });
-    return r.accessToken;
-  } catch (e) {
-    throw authError("Reconnexion nécessaire");
-  }
+  if (jeton && jeton.exp - Date.now() > 120000) return jeton.token;
+  if (enCours) return enCours;
+  enCours = (async () => {
+    try {
+      const r = await app.acquireTokenSilent({ scopes: C.scopes, account });
+      jeton = { token: r.accessToken, exp: r.expiresOn ? +new Date(r.expiresOn) : Date.now() + 3000000 };
+      return r.accessToken;
+    } catch (e) {
+      if (faut_se_reconnecter(e)) { jeton = null; throw authError("Reconnexion nécessaire"); }
+      // réseau coupé, 4G qui hésite… : ce n'est PAS une déconnexion. L'erreur n'a pas de code HTTP : l'appli lit alors sa copie locale.
+      console.warn("Jeton : erreur passagère", e && (e.errorCode || e.message));
+      throw new Error("Réseau indisponible");
+    } finally { enCours = null; }
+  })();
+  return enCours;
 }
 function authError(msg) { const e = new Error(msg); e.status = 401; e.auth = true; return e; }
 
+/** Connexion. Si on connaît déjà le compte de cet appareil, on le propose à Microsoft (loginHint) sans redemander de choisir :
+    tant que la session Microsoft est vivante, le retour est immédiat. */
 export async function login() {
   localStorage.pf_lastLogin = String(Date.now());
-  await app.loginRedirect({ scopes: C.scopes, prompt: "select_account" });
+  let hint = ""; try { hint = localStorage.pf_lastUser || ""; } catch { /* rien */ }
+  const req = { scopes: C.scopes };
+  if (hint) req.loginHint = hint; else req.prompt = "select_account";
+  await app.loginRedirect(req);
 }
-export async function logout() { if (app && account) await app.logoutRedirect({ account }); }
+/** Reconnexion automatique, une seule tentative par ouverture de l'application (jamais en boucle). */
+export function autoLogin() {
+  try {
+    if (!app || sessionStorage.pf_auto === "1" || !localStorage.pf_lastUser) return false;
+    sessionStorage.pf_auto = "1";
+  } catch { return false; }
+  login();
+  return true;
+}
+export async function logout() { try { localStorage.removeItem("pf_lastUser"); } catch { /* rien */ } if (app && account) await app.logoutRedirect({ account }); }
