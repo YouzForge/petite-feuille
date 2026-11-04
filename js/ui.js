@@ -104,14 +104,27 @@ export function ringBadge(iconName) {
   return { wrap, ring };
 }
 
-/** Lecture à voix haute avec la voix du téléphone (français). */
+/* Voix : on cherche une voix française FÉMININE (l'héroïne est une fille). Les téléphones ne donnent pas le genre d'une voix,
+   donc on la reconnaît à son prénom ; les voix masculines connues sont écartées. */
+const FEMININES = /am[ée]lie|audrey|aur[ée]lie|marie|julie|hortense|denise|eloise|éloïse|brigitte|vivienne|louise|chantal|claire|florence|female|femme/i;
+const MASCULINES = /thomas|daniel|nicolas|jacques|paul|claude|henri|remy|rémy|antoine|guillaume|male\b|homme/i;
+function voixFeminine() {
+  const fr = speechSynthesis.getVoices().filter(x => x.lang && /^fr/i.test(x.lang.replace("_", "-")));
+  const score = v => (FEMININES.test(v.name) ? 4 : 0) - (MASCULINES.test(v.name) ? 4 : 0)
+    + (/^fr[-_]fr/i.test(v.lang) ? 1 : 0) + (/enhanced|premium|natural|online/i.test(v.name) ? 1 : 0);
+  return fr.sort((a, b) => score(b) - score(a))[0] || null;
+}
+if ("speechSynthesis" in window) speechSynthesis.addEventListener?.("voiceschanged", () => voixFeminine());
+
+/** Lecture à voix haute avec la voix du téléphone (français, voix féminine si le téléphone en a une). */
 export function speak(text) {
   if (!("speechSynthesis" in window)) return false;
   const u = new SpeechSynthesisUtterance(text);
   u.lang = "fr-FR";
-  const v = speechSynthesis.getVoices().find(x => x.lang && x.lang.toLowerCase().startsWith("fr"));
-  if (v) u.voice = v;
+  const v = voixFeminine();
+  if (v) { u.voice = v; u.lang = v.lang; }
   u.rate = 0.95;
+  u.pitch = v && FEMININES.test(v.name) ? 1 : 1.15;   // voix de genre inconnu : un peu plus aiguë
   speechSynthesis.cancel();
   speechSynthesis.speak(u);
   return true;
