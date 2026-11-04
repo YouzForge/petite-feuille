@@ -185,8 +185,8 @@ export async function lieuxObjets(tab) {
   const [lieux, objets] = await Promise.all([loadCollection(COLLECTIONS.lieu), loadCollection(COLLECTIONS.objet)]);
   const cur = colId === "lieu" ? lieux : objets;
   const tabs = h("div", { class: "tabs" },
-    h("a", { class: "tab center" + (colId === "lieu" ? " on" : ""), href: "#/mj/lieux", style: "text-decoration:none;color:inherit" }, `Lieux · ${lieux.items.length}`),
-    h("a", { class: "tab center" + (colId === "objet" ? " on" : ""), href: "#/mj/objets", style: "text-decoration:none;color:inherit" }, `Objets · ${objets.items.length}`));
+    h("a", { class: "tab center" + (colId === "lieu" ? " on" : ""), href: "#/mj/lieux" }, `Lieux · ${lieux.items.length}`),
+    h("a", { class: "tab center" + (colId === "objet" ? " on" : ""), href: "#/mj/objets" }, `Objets · ${objets.items.length}`));
   const list = h("div", { class: "list" });
   const draw = q => {
     list.replaceChildren();
@@ -258,8 +258,30 @@ export async function appearances(item) {
   return out;
 }
 
+const norm = x => String(x || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
+/** Fiche MJ d'un compagnon : ses pouvoirs, et le lien vers l'animal sauvage du bestiaire (le compagnon est un animal apprivoisé). */
+export async function compagnonHead(item) {
+  const nodes = [];
+  if (item.pouvoirs.length) nodes.push(h("div", { class: "card" }, h("div", { class: "kicker" }, "Pouvoirs"),
+    h("div", { class: "row", style: "flex-wrap:wrap;gap:8px;margin-top:6px" }, item.pouvoirs.map(p => h("span", { class: "chip" }, icon("star", 16, "var(--ink)", 1.6, "var(--yellow)"), p)))));
+  if (item.animal) {
+    let c = null;
+    try { c = (await loadCollection(COLLECTIONS.creature)).items.find(i => norm(i.name) === norm(item.animal)); } catch { /* hors connexion */ }
+    nodes.push(c ? link(`/mj/c/creature/${encodeURIComponent(c.file)}`, "card", h("div", { class: "row" }, icon("monster", 26, "var(--purple)", 2), h("div", { class: "grow" }, h("div", { class: "kicker" }, "Animal sauvage du bestiaire"), h("h3", null, c.name)), icon("next", 22, "var(--muted)")))
+      : h("div", { class: "card dashed muted" }, `Animal : ${item.animal} (pas encore dans le bestiaire)`));
+  }
+  return nodes;
+}
+
 export async function secondaryPanel(item, colId) {
   const nodes = [];
+  if (colId === "creature") {   // les compagnons de ce type d'animal = ceux que l'héroïne a apprivoisés
+    try {
+      const mine = (await loadCollection(COLLECTIONS.compagnon)).items.filter(i => i.animal && norm(i.animal) === norm(item.name));
+      for (const i of mine) nodes.push(link(`/mj/c/compagnon/${encodeURIComponent(i.file)}`, "card", h("div", { class: "row" }, icon("paw", 26, "var(--teal)", 2), h("div", { class: "grow" }, h("div", { class: "kicker" }, "Apprivoisé : compagnon"), h("h3", null, i.name)), icon("next", 22, "var(--muted)"))));
+    } catch { /* hors connexion */ }
+  }
   const done = sections(item.body).find(s => /^ce que \S+ a fait/i.test(s.title));
   if (done && done.text.trim()) nodes.push(h("div", { class: "card md" }, h("h3", null, done.title), h("div", { html: renderMd(done.text) })));
   let found = [];

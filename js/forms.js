@@ -1,7 +1,7 @@
 // Formulaire unique de fiche (R14) : créer ou modifier une créature, un personnage, un lieu, un objet ou un compagnon.
 // Chaque type d'élément se décrit ici par ses champs ; l'écran, l'enregistrement et la photo sont communs.
 import { h, icon } from "./ui.js";
-import { COLLECTIONS, toItem } from "./collections.js";
+import { COLLECTIONS, toItem, loadCollection, parsePouvoirs } from "./collections.js";
 import { readText, writeText, listDir } from "./graph.js";
 import { parseDoc, serializeDoc, getSection, setSection, isTrue, intOf } from "./md.js";
 import { photoControl } from "./photo.js";
@@ -48,9 +48,9 @@ export const SCHEMAS = {
   compagnon: [
     { k: "nom", l: "Nom", t: "text", ph: "Nom du compagnon" },
     { k: "categorie", l: "Type", t: "choice", opts: TYPES_COMP },
-    { k: "animal", l: "Animal", t: "text", ph: "Loup, renard, chouette, requin…" },
+    { k: "animal", l: "Animal (comme dans le bestiaire)", t: "text", ph: "Loup, renard, chouette, requin…", suggest: "creature" },
     { k: "coeurs", l: "Cœurs", t: "num", def: 2 },
-    { k: "pouvoir", l: "Ce qu'il sait faire", t: "area" },
+    { k: "pouvoirs", l: "Pouvoirs (capacités), un par ligne", t: "area", ph: "Se battre\nRenifler des traces\nHurler…" },
     () => ({ k: "apprivoise", l: `Comment ${heroName()} l'a apprivoisé`, t: "area" }),
     voit
   ]
@@ -92,8 +92,11 @@ export async function formScreen(colId, file) {
     const v = f.k === "nom" ? (name || meta.nom || "") : meta[f.k];
     if (f.t === "check" || f.t === "yesno") vals[f.k] = isTrue(v);
     else if (f.t === "num") vals[f.k] = intOf(v) ?? f.def ?? 0;
+    else if (f.k === "pouvoirs") vals[f.k] = parsePouvoirs(v != null ? v : meta.pouvoir).join("\n");
     else vals[f.k] = v == null ? "" : String(v);
   }
+  let suggestions = [];
+  if (colId === "compagnon") { try { suggestions = (await loadCollection(COLLECTIONS.creature)).items.map(i => i.name); } catch { /* hors connexion : pas de suggestions */ } }
   if (colId === "compagnon" && !vals.categorie) vals.categorie = "terre";
   let photo = typeof meta.photo === "string" ? meta.photo : "";
   let note = getSection(body, "Note rapide");
@@ -102,8 +105,12 @@ export async function formScreen(colId, file) {
   const lab = t => h("label", { class: "kicker", style: "text-transform:none;letter-spacing:0;font-size:15px" }, t);
   const wrap = (f, el) => h("div", { class: "list", style: "gap:6px" }, f.l ? lab(f.l) : null, el);
   const build = f => {
-    if (f.t === "text") { const el = h("input", { class: "field", placeholder: f.ph || "" }); el.value = vals[f.k]; el.addEventListener("input", () => vals[f.k] = el.value); return wrap(f, el); }
-    if (f.t === "area") { const el = h("textarea", { class: "field", style: "min-height:96px", placeholder: "À écrire ou dicter (le micro du clavier marche partout)" }); el.value = vals[f.k]; el.addEventListener("input", () => vals[f.k] = el.value); return wrap(f, el); }
+    if (f.t === "text") {
+      const el = h("input", { class: "field", placeholder: f.ph || "" }); el.value = vals[f.k]; el.addEventListener("input", () => vals[f.k] = el.value);
+      if (f.suggest && suggestions.length) { el.setAttribute("list", "dl-" + f.k); return wrap(f, h("div", null, el, h("datalist", { id: "dl-" + f.k }, suggestions.map(n => h("option", { value: n }))))); }
+      return wrap(f, el);
+    }
+    if (f.t === "area") { const el = h("textarea", { class: "field", style: "min-height:96px", placeholder: f.ph || "À écrire ou dicter (le micro du clavier marche partout)" }); el.value = vals[f.k]; el.addEventListener("input", () => vals[f.k] = el.value); return wrap(f, el); }
     if (f.t === "num") {
       const val = h("div", { style: "font:600 26px Fredoka;min-width:2.5em;text-align:center" }, String(vals[f.k]));
       const set = n => { vals[f.k] = Math.max(0, Math.min(30, n)); val.textContent = String(vals[f.k]); };
@@ -128,7 +135,7 @@ export async function formScreen(colId, file) {
     const p = {};
     for (const f of fields) {
       const v = vals[f.k];
-      p[f.k] = typeof v === "string" ? v.trim() : v;
+      p[f.k] = f.k === "pouvoirs" ? parsePouvoirs(v).join(" ; ") : typeof v === "string" ? v.trim() : v;
     }
     p.photo = photo;
     return p;
@@ -140,7 +147,7 @@ export async function formScreen(colId, file) {
       let target = file;
       const p = patch();
       if (file) {
-        await updateItem(colId, file, (m, b) => ({ meta: { ...m, ...p }, body: setSection(b, "Note rapide", note) }));
+        await updateItem(colId, file, (m, b) => { const nm = { ...m, ...p }; if (colId === "compagnon") delete nm.pouvoir; return { meta: nm, body: setSection(b, "Note rapide", note) }; });
       } else {
         const ls = await listDir(col.folder);
         if (ls.stale) throw new Error("Pas de réseau : rien n'a été enregistré.");

@@ -6,7 +6,7 @@ import { renderMd, plain, parseDoc } from "./md.js";
 import { login, logout, userName, accountHash } from "./auth.js";
 import { getSession } from "./jouer.js";
 import { photoBox, sendPhoto } from "./photo.js";
-import { ideaPanel, secondaryPanel, SECONDARY } from "./pages.js";
+import { ideaPanel, secondaryPanel, compagnonHead, SECONDARY } from "./pages.js";
 import { listRoute } from "./forms.js";
 import { parseSteps } from "./md.js";
 
@@ -196,7 +196,7 @@ export async function collectionFiche(colId, file, mode) {
     if (v.faits) nodes.push(h("div", { class: "card md" }, h("h3", null, "Ce que j'ai fait"), h("div", { html: renderMd(v.faits) })));
   } else {
     if (colId === "prochaine") nodes.push(link("/mj/jouer/" + encodeURIComponent(item.file), "btn primary block", icon("dice", 26, "#fff"), "Jouer cette histoire"));
-    const main = [h("div", { class: "card md", html: renderMd(item.body) })];
+    const main = [...(colId === "compagnon" ? await compagnonHead(item) : []), h("div", { class: "card md", html: renderMd(item.body) })];
     if (SECONDARY[colId]) {
       const pane = h("div", { class: "list" }, main);
       const t1 = h("button", { class: "tab on" }, "Fiche"), t2 = h("button", { class: "tab" }, SECONDARY[colId]);

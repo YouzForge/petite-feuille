@@ -71,8 +71,15 @@ export function toItem(col, file, text) {
     apparence: String(d.meta.apparence || "").trim(),
     etat: String(d.meta.etat || "").trim(),
     carte: parseCarte(d.meta.carte),
-    type: typeCompagnon(d.meta)
+    type: typeCompagnon(d.meta),
+    animal: String(d.meta.animal || "").trim(),
+    pouvoirs: parsePouvoirs(d.meta.pouvoirs != null ? d.meta.pouvoirs : d.meta.pouvoir)
   };
+}
+
+/** Pouvoirs (capacités) d'un compagnon : écrits un par ligne dans le formulaire, gardés séparés par « ; » dans le fichier. */
+export function parsePouvoirs(v) {
+  return String(v == null ? "" : v).split(/\s*[;\n]\s*/).map(x => x.trim()).filter(Boolean);
 }
 
 /** Charge tous les éléments d'une collection. → { items, stale } */
