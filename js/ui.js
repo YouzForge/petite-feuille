@@ -32,9 +32,20 @@ export function icon(name, size = 24, color = "var(--ink)", sw = 2, fill = "none
   return wrap.firstChild;
 }
 
-export function hearts(n, size = 26) {
-  const box = h("div", { class: "hearts", role: "img", "aria-label": `${n} cœurs` });
-  for (let i = 0; i < n; i++) box.append(icon("heart", size, "var(--ink)", 1.6, "var(--red)"));
+/**
+ * Cœurs en lignes : au plus `per` par ligne, et chaque cœur est réduit pour que la ligne tienne dans `maxW` pixels.
+ * Beaucoup de cœurs (ou un téléphone étroit) ne cassent donc jamais la mise en page.
+ */
+export function hearts(n, size = 26, maxW = 9999) {
+  const per = Math.max(1, Math.min(n, n <= 10 ? 5 : n <= 20 ? 7 : 9));
+  const gap = 4;
+  const s = Math.max(12, Math.min(size, Math.floor(maxW / per) - gap));
+  const box = h("div", { class: "hearts", role: "img", "aria-label": `${n} cœurs`, style: `flex-direction:column;align-items:center;gap:${gap}px;max-width:100%` });
+  for (let i = 0; i < n; i += per) {
+    const row = h("div", { class: "hearts", style: `gap:${gap}px` });
+    for (let k = i; k < Math.min(n, i + per); k++) row.append(icon("heart", s, "var(--ink)", 1.6, "var(--red)"));
+    box.append(row);
+  }
   return box;
 }
 

@@ -1,5 +1,5 @@
 // Mode Jouer : l'aide-mémoire de la partie, téléphone posé sur la table.
-import { h, icon, spinner } from "./ui.js";
+import { h, icon, hearts, spinner } from "./ui.js";
 import { COLLECTIONS, loadItem, loadHeroState, heroName } from "./collections.js";
 import { parseSteps, ruleSections, renderMd } from "./md.js";
 import { readText } from "./graph.js";
@@ -153,12 +153,12 @@ export async function jouerScreen(file) {
     const counter = (label, ic, val, set, max, fill) => h("div", { class: "counter" },
       h("button", { class: "iconbtn big", "aria-label": `Moins de ${label}`, onclick: () => { set(Math.max(0, val - 1)); save(); draw(); } }, icon("minus", 30)),
       h("div", { class: "cval", role: "status", "aria-label": `${val} ${label}` },
-        val > 0 && fill === "hearts" ? Array.from({ length: val }, () => icon("heart", 34, "var(--ink)", 1.6, "var(--red)")) : null,
+        val > 0 && fill === "hearts" ? hearts(val, 34, 150) : null,
         fill === "shield" ? [icon("shield", 38, "var(--ink)", 1.6, "#A9BDD1"), h("span", { style: "font:600 34px Fredoka" }, String(val))] : null,
         val === 0 && fill === "hearts" ? h("span", { class: "muted" }, "0 cœur") : null),
       h("button", { class: "iconbtn big", "aria-label": `Plus de ${label}`, onclick: () => { set(Math.min(max, val + 1)); save(); draw(); } }, icon("plus", 30)));
     const state = h("div", { class: "card" },
-      counter("cœurs", "heart", s.coeurs, v => s.coeurs = v, 9, "hearts"),
+      counter("cœurs", "heart", s.coeurs, v => s.coeurs = v, 30, "hearts"),
       counter("armure", "shield", s.armure, v => s.armure = v, 5, "shield"),
       s.coeurs === 0 ? h("div", { class: "tip" }, `${heroName()} tombe dans les pommes : elle va se reposer, puis elle repart. Rien de grave !`) : null);
 

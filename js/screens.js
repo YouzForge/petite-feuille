@@ -50,7 +50,7 @@ function stateCard(st, big = true) {
   const slots = companions.length ? companions.map(() => emptySlot("paw")) : [emptySlot("paw"), emptySlot("paw"), emptySlot("paw")];
   return h("div", { class: "card statecard" },
     h("div", { class: "state" },
-      hearts(st.coeurs, big ? 34 : 28),
+      hearts(st.coeurs, big ? 34 : 28, 200),
       h("div", { class: "row", style: "gap:8px" }, icon("shield", big ? 34 : 28, "var(--ink)", 1.6, "#A9BDD1"), h("h2", null, String(st.armure)))),
     h("div", { class: "gear" },
       h("div", null, h("div", { class: "kicker" }, "Équipement"), h("div", { class: "slots" }, st.equip && st.equip.length ? st.equip.map(o => objSlot(o)) : h("span", { class: "muted", style: "font-size:14px" }, "Rien pour l'instant"))),
