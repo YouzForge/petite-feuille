@@ -87,10 +87,37 @@ function toolsBody(session, onRoll) {
   return h("div", { class: "list" }, tabs, pane);
 }
 
+/* ------------------------------------------------------------------ les fins : un bouton par fin prévue + « Autre fin » */
+/** Les fins prévues (champs « Fin A », « Fin B »…) d'une étape. */
+function endingsOf(fields) {
+  return fields.map(f => {
+    const code = (f.label.match(/^fin\s*([a-z0-9]*)/i) || [, ""])[1].toUpperCase();
+    return { code: code || String(1), texte: [f.text, ...f.items].filter(Boolean).join(" · ") };
+  });
+}
+function endingsBox(fields, fin, onFin) {
+  const ends = endingsOf(fields);
+  const mark = on => on ? icon("check", 26, "#fff", 3) : null;
+  const buttons = ends.map(e => {
+    const on = fin && fin.code === e.code;
+    return h("button", { class: "fin-btn" + (on ? " on" : ""), "aria-pressed": on ? "true" : "false", onclick: () => onFin(on ? null : { code: e.code, texte: e.texte }) },
+      h("span", { class: "fin-code" }, on ? icon("check", 24, "#fff", 3) : "Fin " + e.code),
+      h("span", { class: "fin-text" }, on ? "Fin " + e.code + " : " + e.texte : e.texte));
+  });
+  const autreOn = fin && fin.code === "autre";
+  buttons.push(h("button", { class: "fin-btn autre" + (autreOn ? " on" : ""), "aria-pressed": autreOn ? "true" : "false", onclick: () => onFin("autre") },
+    h("span", { class: "fin-code" }, autreOn ? icon("check", 24, "#fff", 3) : icon("plus", 22, "currentColor", 3)),
+    h("span", { class: "fin-text" }, autreOn ? "Autre fin : " + fin.texte : "Autre fin")));
+  return h("div", { class: "fins" },
+    h("div", { class: "kicker" }, "Comment l'histoire se termine ?"),
+    h("div", { style: "font-size:15px;color:var(--muted)" }, "Touche la fin choisie : elle sera dans le récap du soir."),
+    buttons);
+}
+
 /* ------------------------------------------------------------------ une étape */
-function stepCard(step, onAsk) {
+function stepCard(step, onAsk, fin, onFin) {
   const kids = [h("h2", { style: "font-size:30px" }, step.title)];
-  let nbVoies = 0;
+  let nbVoies = 0, finDone = false;
   for (const f of step.fields) {
     const key = f.label.toLowerCase();
     const list = f.items.length ? h("ul", { class: "steplist" }, f.items.map(i => h("li", null, i))) : null;
@@ -110,6 +137,10 @@ function stepCard(step, onAsk) {
           v.type.nom ? h("span", { class: "vtype" }, v.type.nom) : null,
           h("span", { class: "pill" + (v.verrou ? " pill-lock" : "") }, pill)),
         text, list));
+    } else if (/^fin\s*[a-z0-9]*\s*$/i.test(key)) {
+      if (finDone) continue;               // toutes les fins sont regroupées au premier « Fin … »
+      finDone = true;
+      kids.push(endingsBox(step.fields.filter(x => /^fin\s*[a-z0-9]*\s*$/i.test(x.label)), fin, onFin));
     } else if (/^si elle h[ée]site/.test(key)) {
       kids.push(h("div", { class: "tip" }, h("strong", null, "Si elle hésite : "), f.text, list));
     } else {
@@ -152,7 +183,7 @@ export async function jouerScreen(file) {
       h("button", { class: "btn", onclick: () => closers.push(openSheet("Outils", toolsBody(s, save))) }, icon("dice", 24), "Outils"));
     const bars = h("div", { class: "bars" }, steps.map((_, i) => h("button", { class: "bar" + (i <= s.step ? " on" : ""), "aria-label": `Étape ${i + 1}`, onclick: () => { s.step = i; save(); draw(); } })));
     const stepNode = steps.length
-      ? stepCard(steps[s.step], () => ask())
+      ? stepCard(steps[s.step], () => ask(), s.fin, v => chooseEnding(v))
       : h("div", { class: "card md" }, h("h3", null, "Cette histoire n'a pas encore d'étapes de jeu"), h("div", { class: "muted" }, "Ajoute une section « Étapes de jeu » à son fichier (voir le modèle d'histoire). En attendant, voici son contenu :"), h("div", { html: renderMd(item.body) }));
     const nav = steps.length > 1 ? h("div", { class: "row", style: "gap:10px" },
       h("button", { class: "btn grow", disabled: s.step === 0, onclick: () => { s.step--; save(); draw(); window.scrollTo(0, 0); } }, icon("back", 22), "Précédente"),
@@ -182,6 +213,24 @@ export async function jouerScreen(file) {
       h("div", { style: "font-size:20px;max-width:22em" }, "Accepte son idée, puis demande : « D'accord, mais comment tu fais ? »"));
     document.body.append(ov);
     closers.push(() => ov.remove());
+  };
+
+  const chooseEnding = v => {
+    if (v === "autre") {
+      const field = h("textarea", { class: "field", placeholder: `La fin imaginée par ${heroName()}… (le micro du clavier fonctionne ici)`, "aria-label": "Autre fin" });
+      if (s.fin && s.fin.code === "autre") field.value = s.fin.texte;
+      let close;
+      const btn = h("button", { class: "btn primary block", onclick: () => {
+        const t = field.value.trim(); if (!t) return;
+        s.fin = { code: "autre", texte: t }; save(); close(); draw();
+      } }, "Enregistrer cette fin");
+      close = openSheet("Autre fin", h("div", { class: "list" }, h("div", { class: "muted" }, `Note la fin que ${heroName()} a imaginée.`), field, btn));
+      closers.push(close);
+      setTimeout(() => field.focus(), 50);
+      return;
+    }
+    if (v) s.fin = v; else delete s.fin;
+    save(); draw();
   };
 
   const notePhrase = () => {

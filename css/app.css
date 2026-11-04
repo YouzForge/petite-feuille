@@ -142,6 +142,14 @@ textarea.field{min-height:140px;resize:vertical}
 .voie-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:17px}
 .voie-head strong{flex:1;min-width:8em}
 .pill{background:#fff;border-radius:20px;padding:3px 12px;font-size:15px;font-weight:800;white-space:nowrap}
+.fins{display:flex;flex-direction:column;gap:10px}
+.fin-btn{display:flex;align-items:center;gap:12px;text-align:left;width:100%;background:#fff;border:3px solid var(--ink);border-radius:18px;padding:12px 14px;font:inherit;color:var(--ink);box-shadow:0 4px 0 var(--shadow);cursor:pointer}
+.fin-btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--shadow)}
+.fin-code{flex:0 0 auto;min-width:64px;display:inline-flex;justify-content:center;align-items:center;font:600 20px Fredoka;background:var(--yellow);border-radius:12px;padding:6px 8px;min-height:40px}
+.fin-text{flex:1;min-width:0;font-size:18px;overflow-wrap:anywhere}
+.fin-btn.autre{border-style:dashed;background:#FBF4E6}
+.fin-btn.on{background:var(--teal-d);color:#fff;border-color:var(--ink)}
+.fin-btn.on .fin-code{background:var(--teal-d);min-width:40px}
 .steplist{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px;font-size:18px}
 .tip{background:#FAE7B5;border-radius:16px;padding:12px 14px;color:#5a3d12}
 .ask{background:var(--yellow);border:3px solid var(--ink);border-radius:18px;padding:12px;font:600 24px Fredoka;box-shadow:0 4px 0 var(--shadow)}

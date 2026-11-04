@@ -12,13 +12,20 @@ const lines = t => String(t || "").split("\n").map(x => x.trim()).filter(Boolean
 const loadDraft = () => { try { return JSON.parse(localStorage.getItem(DRAFT)); } catch { return null; } };
 const saveDraft = r => { try { localStorage.setItem(DRAFT, JSON.stringify(r)); } catch { /* plein */ } };
 
+/** La fin choisie pendant la partie, en une ligne. */
+function finText(s) {
+  if (!s || !s.fin) return "";
+  return s.fin.code === "autre" ? `Autre fin imaginée par ${heroName()} : ${s.fin.texte}` : `Fin ${s.fin.code} : ${s.fin.texte}`;
+}
+
 function fresh(s) {
   const r = { sid: s ? s.started : "manuel", at: s ? s.started : Date.now(), titre: s ? s.titre : "", mj: "Papa", joueurs: heroName(), duree: "", resume: "",
-    etapes: "", phrases: "", des: "", coeursPerdus: "", armure: "", soins: "", tombee: "Non", gagnes: "", perdus: "", pouvoir: "", compagnons: "",
+    etapes: "", fin: "", phrases: "", des: "", coeursPerdus: "", armure: "", soins: "", tombee: "Non", gagnes: "", perdus: "", pouvoir: "", compagnons: "",
     lieux: "", personnages: "", creatures: "", regles: "", fils: "", prochaine: "", ressenti: "" };
   if (s) {
     r.duree = String(Math.max(1, Math.round((Date.now() - s.started) / 60000)));
     r.etapes = (s.etapes || []).join("\n");
+    r.fin = finText(s);
     r.phrases = (s.phrases || []).map(p => `« ${p.t} »`).join("\n");
     r.des = (s.jets || []).map(j => `${j.a} + ${j.b} : ${j.ok ? "réussite" : "raté"}${j.a === j.b ? " (double)" : ""}`).join("\n");
     if (s.coeurs0 != null) r.coeursPerdus = String(Math.max(0, s.coeurs0 - s.coeurs));
@@ -51,6 +58,9 @@ statut: brouillon
 
 ## Ce qui s'est passé (dans l'ordre)
 ${L(r.etapes, true)}
+
+## Comment l'histoire s'est terminée
+${(r.fin || "").trim() ? (r.fin || "").trim() : "-"}
 
 ## Les idées et les phrases de ${heroName()}
 ${L(r.phrases)}
@@ -98,7 +108,8 @@ ${L(r.ressenti)}
 export function recapScreen() {
   const s = getSession();
   let r = loadDraft();
-  if (!r || r.sid !== (s ? s.started : "manuel")) { r = fresh(s); saveDraft(r); }
+  if (!r || r.sid !== (s ? s.started : "manuel")) { r = fresh(s); r.finSrc = finText(s); saveDraft(r); }
+  else if (s && finText(s) !== (r.finSrc || "")) { r.fin = finText(s); r.finSrc = r.fin; saveDraft(r); }   // la fin a changé depuis l'ouverture du brouillon
   const status = h("span", { class: "chip", style: "background:#E2EEE9" }, "Brouillon gardé sur ce téléphone");
   let timer = 0;
   const touch = () => { clearTimeout(timer); timer = setTimeout(() => { saveDraft(r); status.textContent = "Brouillon gardé sur ce téléphone"; }, 400); status.textContent = "…"; };
@@ -140,6 +151,7 @@ export function recapScreen() {
     sec("L'essentiel"), inp("titre", "Titre de l'histoire"), choice("mj", "Qui a mené la partie", ["Papa", "Maman"]),
     inp("joueurs", "Qui a joué"), inp("duree", "Durée (minutes)", { num: true }), inp("resume", "Résumé en 3 lignes", { area: true }),
     sec("Ce qui s'est passé, dans l'ordre"), inp("etapes", "Une ligne par moment", { area: true }),
+    sec("Comment l'histoire s'est terminée"), inp("fin", "La fin choisie par "+heroName()+" (ou imaginée par elle)", { area: true }),
     sec(`Les phrases de ${heroName()}`), inp("phrases", "Captées pendant la partie (une par ligne)", { area: true }),
     sec("Les jets de dés marquants"), inp("des", "Réussites folles, échecs, doubles", { area: true }),
     sec("Cœurs, armure et soins"), inp("coeursPerdus", "Cœurs perdus", { num: true }), inp("armure", "Armure restante", { num: true }), inp("soins", "Potions ou soins"), choice("tombee", "Est-elle tombée dans les pommes ?", ["Non", "Oui"]),
