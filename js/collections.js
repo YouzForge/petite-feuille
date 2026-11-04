@@ -16,9 +16,14 @@ export const COLLECTIONS = {
     child: { label: "Mes amis", color: "var(--yellow)", route: "amis" },
     empty: "Aucun personnage pour l'instant."
   },
+  prochaine: {
+    id: "prochaine", label: "Histoires en attente", icon: "book",
+    folder: "02_Campagne/Prochaines", exclude: /^(00_|LISEZMOI)/i,
+    empty: "Aucune histoire n'est encore préparée."
+  },
   histoire: {
     id: "histoire", label: "Histoires jouées", icon: "book",
-    folder: "01_Histoires_Jouees", exclude: /^(00_|LISEZMOI)/i,
+    folder: "01_Histoires_Jouees", exclude: /^(00_|LISEZMOI|Recap_)/i,
     empty: "Aucune histoire jouée pour l'instant."
   }
 };
@@ -29,7 +34,7 @@ export function toItem(col, file, text) {
   const photo = typeof d.meta.photo === "string" && /\.(jpe?g|png|webp|heic)$/i.test(d.meta.photo) ? d.meta.photo : null;
   return {
     col: col.id, file, rel: `${col.folder}/${file}`,
-    name: String(d.meta.nom || d.title || humanize(file)),
+    name: String(d.meta.nom || d.meta.titre || d.title || humanize(file)),
     meta: d.meta, body: d.body,
     coeurs: intOf(d.meta.coeurs), boss: isTrue(d.meta.boss), photo
   };
@@ -63,6 +68,9 @@ export function childView(item) {
   return { description: intro, faits: secs.map(s => s.text.trim()).filter(Boolean).join("\n") };
 }
 
+/** Prénom de l'héroïne, lu dans sa fiche puis gardé sur le téléphone (jamais écrit dans le code public). */
+export const heroName = () => { try { return localStorage.getItem("pf:prenom") || "l'aventurière"; } catch { return "l'aventurière"; } };
+
 /** Fiche de l'héroïne : trouvée dans 03_Personnages (fichier « …Fiche_Heroine.md »), sans nom écrit dans le code. */
 export async function findHeroFile() {
   const ls = await listDir("03_Personnages");
@@ -83,6 +91,7 @@ export async function loadHeroState() {
   if (armure == null) { const m = r.text.match(/Armure\*\*\s*\|[^\n]*?(\d+)/); armure = m ? Number(m[1]) : 1; }
   const nom = String(d.meta.nom || (r.text.match(/\*\*Nom\s*:?\s*\*\*\s*:?\s*([^\n|]+)/) || r.text.match(/\*\*Nom\*\*\s*\|\s*([^|\n]+)/) || [, ""])[1] || "").trim();
   const prenom = nom.split(/[,\s—–-]/)[0] || "";
+  try { if (prenom) localStorage.setItem("pf:prenom", prenom); } catch { /* ok */ }
   // équipement : lignes de la section « Inventaire » reconnues dans le registre des objets (et marquées « porté »)
   const inv = (r.text.match(/^## Inventaire\s*\n([\s\S]*?)(?=\n## |(?![\s\S]))/m) || [, ""])[1];
   const equip = [];

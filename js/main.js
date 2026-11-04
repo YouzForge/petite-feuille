@@ -3,6 +3,8 @@ import { initAuth, isSignedIn, isAllowed } from "./auth.js";
 import { hasFolder, discoverFolder } from "./graph.js";
 import { h, icon, spinner, errorBox } from "./ui.js";
 import * as S from "./screens.js";
+import { jouerScreen } from "./jouer.js";
+import { recapScreen } from "./recap.js";
 
 const root = document.getElementById("app");
 const dec = decodeURIComponent;
@@ -27,12 +29,15 @@ const ROUTES = [
   [/^\/mj\/notes$/, () => S.mjNotes(), "mj"],
   [/^\/mj\/c\/([a-z]+)$/, c => S.collectionList(c, "mj"), "mj"],
   [/^\/mj\/c\/([a-z]+)\/(.+)$/, (c, f) => S.collectionFiche(c, f, "mj"), "mj"],
+  [/^\/mj\/jouer\/(.+)$/, f => jouerScreen(f), "mj"],
+  [/^\/mj\/recap$/, () => recapScreen(), "mj"],
   [/^\/mj\/heroine$/, () => S.heroineView(), "mj"],
   [/^\/mj\/f\/(.+)$/, p => S.fileView(p), "mj"]
 ];
 
 function chrome(screen, mode) {
   const frag = document.createDocumentFragment();
+  if (screen.bare) { frag.append(screen.node); return frag; }
   if (screen.title || screen.back) {
     const bar = h("div", { class: "topbar" });
     if (screen.back) bar.append(h("a", { class: "iconbtn", href: "#" + screen.back, "aria-label": "Retour" }, icon("back", 24)));
@@ -53,6 +58,7 @@ function chrome(screen, mode) {
 }
 
 let token = 0;
+let cleanup = null;
 async function render() {
   const mine = ++token;
   let path = location.hash.replace(/^#/, "") || "/";
@@ -73,11 +79,13 @@ async function render() {
   if (!match) { location.hash = "#/"; return; }
   if (match.mode === "mj" && sessionStorage.pf_mj !== "1") { location.hash = "#/"; return; }
 
+  if (cleanup) { try { cleanup(); } catch { /* ok */ } cleanup = null; }
   root.replaceChildren(spinner());
   window.scrollTo(0, 0);
   try {
     const screen = await match.fn(...match.args);
     if (mine !== token) return;                                // on est déjà ailleurs
+    cleanup = screen.cleanup || null;
     root.replaceChildren(chrome(screen, match.mode));
   } catch (e) {
     if (mine !== token) return;

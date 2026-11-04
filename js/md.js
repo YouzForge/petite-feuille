@@ -123,3 +123,30 @@ export function sections(body) {
     return m ? { title: m[1].trim(), text: m[2] } : { title: "", text: p };
   });
 }
+
+/**
+ * Étapes de jeu d'une histoire : section « ## Étapes de jeu », une « ### Étape N — Titre » par étape.
+ * Chaque étape : lignes « - **Libellé :** texte » suivies de sous-puces. → [{title, fields:[{label, text, items[]}]}]
+ */
+export function parseSteps(body) {
+  const sec = sections(body).find(s => /^[ée]tapes?( de jeu)?\s*$/i.test(s.title));
+  if (!sec) return [];
+  return sec.text.split(/\n(?=### )/).filter(t => /^### /.test(t)).map(t => {
+    const lines = t.split("\n");
+    const title = lines[0].replace(/^###\s*/, "").replace(/^[ée]tape\s*\d+\s*[—–:-]\s*/i, "").trim();
+    const fields = [];
+    for (const raw of lines.slice(1)) {
+      if (!raw.trim()) continue;
+      const top = raw.match(/^[-*]\s+\*\*(.+?)\s*:?\s*\*\*\s*:?\s*(.*)$/);
+      const sub = raw.match(/^\s{2,}[-*]\s+(.*)$/);
+      if (top) fields.push({ label: top[1].trim(), text: top[2].trim(), items: [] });
+      else if (sub && fields.length) fields[fields.length - 1].items.push(sub[1].trim());
+    }
+    return { title, fields };
+  });
+}
+
+/** Sections « ### 4.x » du fichier de règles, pour l'aide « Règles en bref » (une seule source : le fichier maître). */
+export function ruleSections(text, wanted) {
+  return text.split(/\n(?=### )/).filter(p => wanted.some(w => p.startsWith("### " + w)));
+}

@@ -4,6 +4,8 @@ import { COLLECTIONS, loadCollection, loadItem, loadHeroState, childView } from 
 import { readText, writeText, uploadBlob, fetchBlob, setFolderPath, listFolders, isProjectFolder } from "./graph.js";
 import { renderMd, plain, parseDoc } from "./md.js";
 import { login, logout, userName, accountHash } from "./auth.js";
+import { getSession } from "./jouer.js";
+import { parseSteps } from "./md.js";
 
 const go = path => { location.hash = "#" + path; };
 const link = (path, cls, ...kids) => h("a", { class: cls, href: "#" + path }, ...kids);
@@ -194,7 +196,7 @@ export async function collectionList(colId, mode) {
   draw("");
   return {
     title, back: mode === "child" ? "/" : "/mj/monde",
-    nav: mode === "mj" ? (colId === "histoire" ? "histoires" : "monde") : null,
+    nav: mode === "mj" ? (colId === "histoire" || colId === "prochaine" ? "histoires" : "monde") : null,
     node: h("div", { class: "page" + (mode === "mj" ? " with-nav" : "") }, staleBanner(stale), items.length > 5 || mode === "mj" ? search : null, list)
   };
 }
@@ -214,34 +216,50 @@ export async function collectionFiche(colId, file, mode) {
     if (v.description) nodes.push(h("div", { class: "card" }, h("div", null, v.description)));
     if (v.faits) nodes.push(h("div", { class: "card md" }, h("h3", null, "Ce que j'ai fait"), h("div", { html: renderMd(v.faits) })));
   } else {
+    if (colId === "prochaine") nodes.push(link("/mj/jouer/" + encodeURIComponent(item.file), "btn primary block", icon("dice", 26, "#fff"), "Jouer cette histoire"));
     nodes.push(h("div", { class: "card md", html: renderMd(item.body) }));
   }
   return {
     title: item.name, back: `${mode === "child" ? "/child" : "/mj"}/c/${colId}`,
-    nav: mode === "mj" ? (colId === "histoire" ? "histoires" : "monde") : null,
+    nav: mode === "mj" ? (colId === "histoire" || colId === "prochaine" ? "histoires" : "monde") : null,
     node: h("div", { class: "page" + (mode === "mj" ? " with-nav" : "") }, nodes)
   };
 }
 
 /* ------------------------------------------------------------------ mode MJ */
 export async function mjTonight() {
-  let st = { coeurs: 3, armure: 1, equip: [] }, last = null, stale = false;
+  let st = { coeurs: 3, armure: 1, equip: [] }, last = null, next = null, stale = false;
   try { st = await loadHeroState(); stale = st.stale; } catch (e) { if (e.auth) throw e; }
   try { const { items } = await loadCollection(COLLECTIONS.histoire); last = items[items.length - 1] || null; } catch (e) { if (e.auth) throw e; }
+  try { const { items } = await loadCollection(COLLECTIONS.prochaine); next = items.find(i => /^pr[eê]te?$/i.test(String(i.meta.statut || ""))) || null; } catch (e) { if (e.auth) throw e; }
+  const sess = getSession();
+  const playFile = sess ? sess.file : next ? next.file : null;
   return {
     title: "Ce soir", nav: "ce-soir",
     node: h("div", { class: "page with-nav" },
       staleBanner(stale),
       stateCard(st, false),
-      last ? link(`/mj/c/histoire/${encodeURIComponent(last.file)}`, "card", h("div", { class: "kicker" }, "Dernière histoire jouée"), h("h3", null, last.name)) : null,
-      h("div", { class: "card" }, h("h3", null, "Mode Jouer"), h("div", { class: "muted" }, "L'aide-mémoire de la partie (indices, cœurs, lanceur 2d6, récap du soir) arrive dans une prochaine version.")))
+      playFile
+        ? h("div", { class: "card" },
+            h("div", { class: "kicker" }, sess ? "Partie en cours" : "Histoire de ce soir"),
+            h("h2", null, sess ? sess.titre : next.name),
+            next && !sess ? h("div", { class: "muted" }, [next.meta.duree, parseSteps(next.body).length ? `${parseSteps(next.body).length} étapes` : null].filter(Boolean).join(" · ")) : null,
+            link("/mj/jouer/" + encodeURIComponent(playFile), "btn primary block", icon("dice", 26, "#fff"), sess ? "Reprendre la partie" : "Jouer"),
+            sess ? link("/mj/recap", "btn block", "Terminer et faire le récap") : null)
+        : h("div", { class: "card" }, h("h3", null, "Pas d'histoire prête pour ce soir"), h("div", { class: "muted" }, "Une histoire apparaît ici quand son fichier (dans 02_Campagne/Prochaines) a le statut « prête ».")),
+      last ? link(`/mj/c/histoire/${encodeURIComponent(last.file)}`, "card", h("div", { class: "kicker" }, "Dernière histoire jouée"), h("h3", null, last.name)) : null)
   };
 }
 
 export async function mjStories() {
-  const r = await collectionList("histoire", "mj");
-  r.title = "Histoires"; r.back = null; r.nav = "histoires";
-  return r;
+  const [wait, played] = await Promise.all([loadCollection(COLLECTIONS.prochaine).catch(e => { if (e.auth) throw e; return { items: [], stale: false }; }), loadCollection(COLLECTIONS.histoire)]);
+  const sect = (title, col, items) => [h("div", { class: "kicker" }, title),
+    items.length ? h("div", { class: "list" }, items.map(it => link(`/mj/c/${col.id}/${encodeURIComponent(it.file)}`, "card", h("div", { class: "row" },
+      h("div", { class: "thumb" }, icon(col.icon, 28, "var(--ink)")), h("div", { class: "grow" }, h("h3", null, it.name), it.meta.statut ? h("div", { class: "fiche-meta" }, h("span", { class: "chip" }, String(it.meta.statut))) : null))))) : h("div", { class: "muted" }, col.empty)];
+  return {
+    title: "Histoires", nav: "histoires",
+    node: h("div", { class: "page with-nav" }, staleBanner(wait.stale || played.stale), ...sect("En attente", COLLECTIONS.prochaine, wait.items), ...sect("Jouées", COLLECTIONS.histoire, played.items))
+  };
 }
 
 export function mjWorld() {

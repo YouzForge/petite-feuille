@@ -115,3 +115,40 @@ textarea.field{min-height:140px;resize:vertical}
 .slots{display:flex;gap:8px;margin-top:6px;min-height:48px;align-items:center}
 .slot{border:3px solid var(--ink);border-radius:10px;display:grid;place-items:center;box-shadow:inset 0 -4px 0 rgba(0,0,0,.14)}
 .slot.empty{background:transparent;border:3px dashed var(--dash);box-shadow:none}
+
+/* mode Jouer */
+.jouer{max-width:520px;margin:0 auto;padding:calc(12px + var(--safe-t)) 16px 36px;display:flex;flex-direction:column;gap:14px}
+.jhead{display:flex;align-items:center;gap:12px}
+.jhead .btn{padding:10px 14px;box-shadow:0 3px 0 var(--shadow)}
+.grow{flex:1;min-width:0}
+.bars{display:flex;gap:8px}
+.bar{flex:1;height:12px;border-radius:8px;border:0;background:#DAC39A;padding:0}
+.bar.on{background:var(--red)}
+.stepcard{gap:14px;padding:18px}
+.voie{border:3px solid var(--dash);border-radius:20px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;background:#F4E8D3}
+.voie.v1{background:#E2EEE9;border-color:var(--teal-d);color:var(--ink)}
+.voie.v2{background:#E3EAF6;border-color:var(--blue)}
+.voie-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:17px}
+.voie-head strong{flex:1;min-width:8em}
+.pill{background:#fff;border-radius:20px;padding:3px 12px;font-size:15px;font-weight:800;white-space:nowrap}
+.steplist{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px;font-size:18px}
+.tip{background:#FAE7B5;border-radius:16px;padding:12px 14px;color:#5a3d12}
+.ask{background:var(--yellow);border:3px solid var(--ink);border-radius:18px;padding:12px;font:600 24px Fredoka;box-shadow:0 4px 0 var(--shadow)}
+.ask:active{transform:translateY(3px);box-shadow:0 1px 0 var(--shadow)}
+.counter{display:flex;align-items:center;gap:10px}
+.counter .cval{flex:1;display:flex;justify-content:center;align-items:center;gap:8px;min-height:50px}
+.iconbtn.big{width:56px;height:56px}
+.ask-overlay{position:fixed;inset:0;background:var(--cream);z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;padding:30px}
+.sheet-back{position:fixed;inset:0;background:rgba(58,38,24,.55);z-index:40;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--cream);width:100%;max-width:520px;max-height:88vh;overflow:auto;border-radius:28px 28px 0 0;padding:10px 18px calc(24px + var(--safe-b))}
+.sheet-grip{width:56px;height:6px;border-radius:4px;background:var(--shadow);margin:0 auto 12px}
+.tabs{display:flex;gap:10px}
+.tab{flex:1;border:3px solid var(--ink);border-radius:30px;background:var(--card);padding:10px;font-weight:800}
+.tab.on{background:var(--ink);color:#fff}
+.dice{display:flex;gap:18px;justify-content:center;padding:6px 0}
+.die{width:84px;height:84px;border:4px solid var(--ink);border-radius:18px;background:var(--card);display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:10px;gap:2px}
+.pip{border-radius:50%;margin:auto;width:14px;height:14px}
+.pip.on{background:var(--ink)}
+.verdict{min-height:46px;display:inline-block;border-radius:24px;padding:6px 22px;font:600 28px Fredoka}
+.verdict.win{background:var(--teal);color:#fff}
+.verdict.miss{background:#EADBC0;color:var(--muted)}
