@@ -46,9 +46,9 @@ export const SCHEMAS = {
     voit
   ],
   compagnon: [
-    { k: "nom", l: "Nom", t: "text", ph: "Nom du compagnon" },
+    { k: "animal", l: "Quel animal ? (comme dans le bestiaire)", t: "text", ph: "Loup, renard, chouette, requin…", suggest: "creature" },
+    () => ({ k: "nom", l: `Son nom : celui que ${heroName()} lui donne`, t: "text", ph: "Le nom choisi (tu pourras le changer)" }),
     { k: "categorie", l: "Type", t: "choice", opts: TYPES_COMP },
-    { k: "animal", l: "Animal (comme dans le bestiaire)", t: "text", ph: "Loup, renard, chouette, requin…", suggest: "creature" },
     { k: "coeurs", l: "Cœurs", t: "num", def: 2 },
     { k: "pouvoirs", l: "Pouvoirs (capacités), un par ligne", t: "area", ph: "Se battre\nRenifler des traces\nHurler…" },
     () => ({ k: "apprivoise", l: `Comment ${heroName()} l'a apprivoisé`, t: "area" }),

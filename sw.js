@@ -1,4 +1,4 @@
-const CACHE = "pf-app-v16";
+const CACHE = "pf-app-v17";
 const FILES = ["./", "./index.html", "./config.js", "./css/app.css", "./js/main.js", "./js/screens.js", "./js/ui.js", "./js/auth.js", "./js/graph.js", "./js/md.js", "./js/collections.js", "./js/icons.js", "./js/colors.js", "./js/jouer.js", "./js/voies.js", "./js/pages.js", "./js/forms.js", "./js/photo.js", "./js/recap.js", "./lib/msal-browser.min.js", "./manifest.webmanifest", "./img/avatar.png", "./icon-180.png", "./icon-192.png", "./icon-512.png", "./fonts/fredoka-latin-500-normal.woff2", "./fonts/fredoka-latin-600-normal.woff2", "./fonts/nunito-latin-600-normal.woff2", "./fonts/nunito-latin-700-normal.woff2", "./fonts/nunito-latin-800-normal.woff2"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES.map(f => new Request(f, {cache: "reload"})))).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

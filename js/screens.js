@@ -136,6 +136,7 @@ export function tools() {
 /* ------------------------------------------------------------------ collections (modèle unique, R14) */
 function chips(item, col) {
   const out = [];
+  if (col.id === "compagnon" && item.animal) out.push(h("span", { class: "chip" }, icon("paw", 16, "var(--ink)", 1.8, "var(--teal)"), item.animal));
   if (col.id === "creature") {
     if (item.coeurs != null) out.push(h("span", { class: "chip" }, icon("heart", 16, "var(--ink)", 1.6, "var(--red)"), `${item.coeurs} cœur${item.coeurs > 1 ? "s" : ""}`));
     if (item.boss) out.push(h("span", { class: "chip boss" }, icon("star", 16, "var(--ink)", 1.6, "var(--yellow)"), "Boss"));

@@ -223,7 +223,7 @@ export async function mjCompagnons() {
     if (!mine.length) nodes.push(h("div", { class: "card dashed muted" }, "Pas encore de compagnon de ce type."));
     for (const i of mine) nodes.push(link(`/mj/c/compagnon/${encodeURIComponent(i.file)}`, "card", h("div", { class: "row" },
       i.photo ? photoBox("08_Photos/" + i.photo, "thumb") : h("div", { class: "disc", style: "background:var(--teal);width:54px;height:54px;border:3px solid var(--ink);flex:none" }, icon("paw", 26, "#fff", 2)),
-      h("div", { class: "grow" }, h("h3", null, i.name), h("div", { class: "fiche-meta" }, i.coeurs != null ? h("span", { class: "chip" }, icon("heart", 16, "var(--ink)", 1.6, "var(--red)"), `${i.coeurs} cœurs`) : null)),
+      h("div", { class: "grow" }, h("h3", null, i.name), h("div", { class: "fiche-meta" }, i.animal ? h("span", { class: "chip" }, i.animal) : null, i.coeurs != null ? h("span", { class: "chip" }, icon("heart", 16, "var(--ink)", 1.6, "var(--red)"), `${i.coeurs} cœurs`) : null)),
       icon("next", 22, "var(--muted)"))));
   }
   nodes.push(h("div", { class: "card md" }, h("div", { html: "<strong>Rappel :</strong> le compagnon qui part avec " + heroName() + " est noté dans le récap du soir : rien à cocher ici. Claude met à jour le compte rendu et le journal." })));
