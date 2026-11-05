@@ -122,6 +122,14 @@ export async function uploadBlob(rel, blob, type) {
   await req(itemUrl(rel) + "/content", { method: "PUT", headers: { "Content-Type": type }, body: blob });
 }
 
+/** Supprime un fichier (il va dans la corbeille OneDrive, récupérable 93 jours). Déjà absent = réussi. */
+export async function deleteFile(rel) {
+  try { await req(itemUrl(rel), { method: "DELETE" }); }
+  catch (e) { if (e.status !== 404) throw e; }
+  const dir = rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")) : "";
+  try { localStorage.removeItem(P + "ls:" + dir); localStorage.removeItem(P + "tx:" + rel); } catch { /* ok */ }
+}
+
 export async function fetchBlob(rel) {
   const r = await req(itemUrl(rel) + "/content");
   return r.blob();

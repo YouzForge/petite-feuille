@@ -317,28 +317,96 @@ const CLASSES = [["creature", "Monstre"], ["lieu", "Lieu"], ["objet", "Objet"], 
 
 export async function photosScreen() {
   const ls = await listDir("08_Photos");
-  const photos = ls.data.filter(f => !f.dir && /\.(jpe?g|png|webp)$/i.test(f.name)).map(f => f.name).sort().reverse();
+  let photos = ls.data.filter(f => !f.dir && /\.(jpe?g|png|webp)$/i.test(f.name)).map(f => f.name).sort().reverse();
   const cols = {};
   await Promise.all(CLASSES.map(async ([id]) => { try { cols[id] = (await loadCollection(COLLECTIONS[id])).items; } catch { cols[id] = []; } }));
-  const used = new Set(Object.values(cols).flat().map(i => i.photo).filter(Boolean));
-  let todo = photos.filter(p => !used.has(p));
+  // photo → fiches qui l'utilisent
+  const usedBy = () => {
+    const m = new Map();
+    for (const [classe, items] of Object.entries(cols)) for (const i of items) if (i.photo) { if (!m.has(i.photo)) m.set(i.photo, []); m.get(i.photo).push({ classe, file: i.file, name: i.name }); }
+    return m;
+  };
+  let used = usedBy();
   let chosen = null, classe = "creature", target = null;
+  let mode = "classer";        // « classer » = pas encore reliées ; « toutes » = tout le dossier
+  let selecting = false, confirming = false, busy = false;
+  const sel = new Set();
+  const visible = () => mode === "toutes" ? photos : photos.filter(p => !used.has(p));
 
+  const bar = h("div", { class: "row", style: "gap:8px;flex-wrap:wrap" });
   const grid = h("div", { class: "tiles" });
   const panel = h("div", { class: "card" });
   const msg = h("div", { class: "muted center" });
+
+  const drawBar = () => {
+    bar.replaceChildren(
+      h("button", { class: "tab" + (mode === "classer" ? " on" : ""), style: "flex:1 1 auto;padding:8px 12px", onclick: () => { mode = "classer"; sel.clear(); confirming = false; redraw(); } }, `À classer (${photos.filter(p => !used.has(p)).length})`),
+      h("button", { class: "tab" + (mode === "toutes" ? " on" : ""), style: "flex:1 1 auto;padding:8px 12px", onclick: () => { mode = "toutes"; sel.clear(); confirming = false; redraw(); } }, `Toutes (${photos.length})`),
+      h("button", { class: "btn block" + (selecting ? " primary" : ""), style: "flex:1 1 100%", disabled: busy, onclick: () => { selecting = !selecting; sel.clear(); confirming = false; chosen = null; target = null; msg.textContent = ""; redraw(); } },
+        icon(selecting ? "check" : "trash", 22, selecting ? "#fff" : "var(--ink)", 2), selecting ? "Terminer la sélection" : "Sélectionner pour supprimer"));
+  };
   const drawGrid = () => {
     grid.replaceChildren();
-    if (!todo.length) { grid.append(h("div", { class: "card dashed muted", style: "grid-column:1/-1" }, photos.length ? "Toutes les photos sont reliées à une fiche." : "Aucune photo pour l'instant. Prends-en depuis « Mes outils » ou avec le bouton photo.")); return; }
-    for (const p of todo) {
-      const b = h("button", { class: "ptile" + (chosen === p ? " on" : ""), "aria-pressed": String(chosen === p), onclick: () => { chosen = p; target = null; drawGrid(); drawPanel(); } },
-        photoBox("08_Photos/" + p, "photo sq"), h("span", { class: "muted", style: "font-size:12px;overflow-wrap:anywhere" }, p));
-      if (chosen === p) b.append(h("span", { class: "tick" }, icon("check", 20, "#fff", 3)));
+    const list = visible();
+    if (!list.length) { grid.append(h("div", { class: "card dashed muted", style: "grid-column:1/-1" }, photos.length ? "Toutes les photos sont reliées à une fiche." : "Aucune photo pour l'instant. Prends-en depuis « Mes outils » ou avec le bouton photo.")); return; }
+    for (const p of list) {
+      const on = selecting ? sel.has(p) : chosen === p;
+      const links = used.get(p);
+      const b = h("button", { class: "ptile" + (on ? " on" : ""), "aria-pressed": String(on), disabled: busy, onclick: () => {
+        msg.textContent = "";
+        if (selecting) { sel.has(p) ? sel.delete(p) : sel.add(p); confirming = false; drawGrid(); drawPanel(); return; }
+        if (links) { msg.className = "muted center"; msg.textContent = `Déjà reliée à « ${links.map(l => l.name).join(", ")} ». Pour la supprimer, touche « Sélectionner ».`; return; }
+        chosen = p; target = null; drawGrid(); drawPanel();
+      } }, photoBox("08_Photos/" + p, "photo sq"),
+        h("span", { class: "muted", style: "font-size:12px;overflow-wrap:anywhere" }, p),
+        links ? h("span", { style: "font-size:12px;font-weight:800;overflow-wrap:anywhere" }, "→ " + links.map(l => l.name).join(", ")) : null);
+      if (on) b.append(h("span", { class: "tick" }, icon("check", 20, "#fff", 3)));
       grid.append(b);
     }
   };
+
+  const drawDeletePanel = () => {
+    const n = sel.size;
+    if (!n) { panel.append(h("div", { class: "muted" }, "Touche les photos à supprimer. Elles vont dans la corbeille de OneDrive (récupérables 93 jours).")); return; }
+    const linked = [...sel].filter(p => used.has(p));
+    if (!confirming) {
+      panel.append(h("div", { class: "kicker" }, n === 1 ? "1 photo choisie" : `${n} photos choisies`),
+        h("button", { class: "btn red block", onclick: () => { confirming = true; drawPanel(); } }, icon("trash", 22, "#fff", 2), n === 1 ? " Supprimer cette photo" : ` Supprimer ces ${n} photos`));
+      return;
+    }
+    panel.append(h("div", { class: "kicker" }, "Supprimer pour de bon ?"),
+      h("div", null, `${n === 1 ? "La photo sera envoyée" : `Les ${n} photos seront envoyées`} dans la corbeille de OneDrive (récupérable pendant 93 jours).`),
+      ...(linked.length ? [h("div", { class: "ko" }, "Attention : " + linked.map(p => `${p} est utilisée par « ${used.get(p).map(l => l.name).join(", ")} »`).join(" ; ") + ". Ces fiches n'auront plus de photo.")] : []),
+      h("div", { class: "row", style: "gap:10px;margin-top:8px" },
+        h("button", { class: "btn grow", disabled: busy, onclick: () => { confirming = false; drawPanel(); } }, "Garder"),
+        h("button", { class: "btn red grow", disabled: busy, onclick: doDelete }, "Oui, supprimer")));
+  };
+  const doDelete = async () => {
+    busy = true; msg.className = "muted center"; msg.textContent = "Suppression…"; drawBar(); drawGrid(); drawPanel();
+    const { deleteFile } = await import("./graph.js");
+    const done = [], failed = [];
+    for (const p of [...sel]) {
+      try {
+        await deleteFile("08_Photos/" + p);
+        done.push(p);
+        for (const l of used.get(p) || []) {          // la fiche perd sa photo
+          try { await updateItem(l.classe, l.file, (m, b) => { const nm = { ...m }; delete nm.photo; return { meta: nm, body: b }; }); } catch { /* la fiche pointera vers une photo absente : l'icône s'affiche */ }
+          const it = (cols[l.classe] || []).find(i => i.file === l.file); if (it) it.photo = null;
+        }
+      } catch (e) { failed.push(p); }
+    }
+    photos = photos.filter(p => !done.includes(p));
+    used = usedBy();
+    sel.clear(); for (const p of failed) sel.add(p);
+    confirming = false; busy = false;
+    if (failed.length) { msg.className = "ko center"; msg.textContent = `${done.length} supprimée(s), ${failed.length} n'ont pas pu l'être. Réessaie (réseau ?).`; }
+    else { msg.className = "ok center"; msg.textContent = done.length === 1 ? "Photo supprimée." : `${done.length} photos supprimées.`; }
+    redraw();
+  };
+
   const drawPanel = () => {
     panel.replaceChildren();
+    if (selecting) { drawDeletePanel(); return; }
     if (!chosen) { panel.append(h("div", { class: "muted" }, "Touche une photo pour l'associer à une fiche.")); return; }
     const chips = h("div", { class: "row", style: "flex-wrap:wrap;gap:8px" }, CLASSES.map(([id, l]) => h("button", { class: "tab" + (id === classe ? " on" : ""), style: "flex:0 1 auto;padding:8px 14px", onclick: () => { classe = id; target = null; drawPanel(); } }, l)));
     const list = h("div", { class: "list", style: "gap:8px" });
@@ -356,27 +424,28 @@ export async function photosScreen() {
       try {
         await updateItem(classe, target, (m, b) => ({ meta: { ...m, photo: chosen }, body: b }));
         const it = (cols[classe] || []).find(i => i.file === target); if (it) it.photo = chosen;
-        todo = todo.filter(p => p !== chosen); chosen = null; target = null;
+        used = usedBy(); chosen = null; target = null;
         msg.className = "ok center"; msg.textContent = "Photo associée.";
-        drawGrid(); drawPanel();
+        redraw();
       } catch (e) { msg.className = "ko center"; msg.textContent = e.message || "Échec."; go.disabled = false; }
     } }, "Associer");
     panel.append(h("div", { class: "kicker" }, "Associer la photo choisie à"), chips, pick, list, go);
   };
-  drawGrid(); drawPanel();
+  const redraw = () => { drawBar(); drawGrid(); drawPanel(); };
+  redraw();
 
   const input = h("input", { type: "file", accept: "image/*", capture: "environment", style: "display:none" });
   input.addEventListener("change", async () => {
     const f = input.files[0]; if (!f) return;
     msg.className = "muted center"; msg.textContent = "Envoi de la photo…";
-    try { const { sendPhoto } = await import("./photo.js"); const r = await sendPhoto(f); todo.unshift(r.name); chosen = r.name; msg.className = "ok center"; msg.textContent = "Photo rangée."; drawGrid(); drawPanel(); }
+    try { const { sendPhoto } = await import("./photo.js"); const r = await sendPhoto(f); photos.unshift(r.name); selecting = false; sel.clear(); mode = "classer"; chosen = r.name; msg.className = "ok center"; msg.textContent = "Photo rangée."; redraw(); }
     catch (e) { msg.className = "ko center"; msg.textContent = e.status ? "La photo n'a pas pu être envoyée." : "Pas de réseau."; }
     input.value = "";
   });
   return {
-    title: "Photos à classer", back: "/mj/monde", nav: "monde",
+    title: "Photos", back: "/mj/monde", nav: "monde",
     action: h("button", { class: "iconbtn plus", "aria-label": "Prendre une photo", onclick: () => input.click() }, icon("camera", 24, "#fff", 2)),
-    node: h("div", { class: "page with-nav" }, stale(ls.stale), h("div", { class: "muted" }, "Les photos prises avec l'appli, dans le dossier 08_Photos, pas encore reliées à une fiche."), grid, panel, msg, input)
+    node: h("div", { class: "page with-nav" }, stale(ls.stale), h("div", { class: "muted" }, "Les photos du dossier 08_Photos : à relier à une fiche, ou à supprimer."), bar, grid, panel, msg, input)
   };
 }
 
@@ -457,7 +526,7 @@ export async function mjWorldScreen() {
         tile("/mj/c/creature", "monster", "var(--purple)", "Bestiaire", plural(nB, "créature", "créatures")),
         tile("/mj/lieux", "pin", "var(--blue)", "Lieux et objets", `${nL ?? 0} lieux · ${nO ?? 0} objets`),
         tile("/mj/f/00_REGLES_PROJET.md", "book", "var(--red)", "Règles", "Pour Justine aussi"),
-        tile("/mj/photos", "image", "var(--muted)", "Photos à classer", ph == null ? "Dans 08_Photos" : `${ph} dans 08_Photos`)))
+        tile("/mj/photos", "image", "var(--muted)", "Photos", ph == null ? "Dans 08_Photos" : `${ph} dans 08_Photos`)))
   };
   function n(v, s, p) { return v == null ? "" : v === 0 ? "Aucun pour l'instant" : `${v} ${v > 1 ? p : s}`; }
 }
