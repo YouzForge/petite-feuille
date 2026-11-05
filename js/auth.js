@@ -37,6 +37,24 @@ function gardeCleDeChiffrement() {
 
 export const isSignedIn = () => !!account;
 
+/* Accès « dossiers partagés » : réservé aux téléphones qui en ont besoin (celui d'une personne à qui le dossier est partagé).
+   Il demande à Microsoft l'autorisation élargie Files.ReadWrite.All, une seule fois, sur CET appareil. Les autres appareils
+   gardent l'autorisation d'origine, inchangée. */
+const WIDE_KEY = "pf_wide";
+export const isWide = () => { try { return localStorage.getItem(WIDE_KEY) === "1"; } catch { return false; } };
+const scopes = () => isWide() ? ["User.Read", "Files.ReadWrite.All"] : C.scopes;
+/** Active l'accès élargi sur cet appareil puis relance la connexion Microsoft (la page est quittée). */
+export async function enableWideAccess() {
+  try { localStorage.setItem(WIDE_KEY, "1"); } catch { /* tant pis */ }
+  jeton = null;
+  localStorage.pf_lastLogin = String(Date.now());
+  const req = { scopes: scopes(), prompt: "consent" };
+  if (account) req.account = account;
+  await app.loginRedirect(req);
+}
+/** Revient à l'autorisation d'origine sur cet appareil. */
+export function disableWideAccess() { try { localStorage.removeItem(WIDE_KEY); } catch { /* rien */ } jeton = null; }
+
 /** Empreinte du compte connecté (jamais l'adresse elle-même). */
 export async function accountHash() {
   const data = new TextEncoder().encode("pf1:" + userName().trim().toLowerCase());
@@ -63,7 +81,7 @@ export async function getToken() {
   if (enCours) return enCours;
   enCours = (async () => {
     try {
-      const r = await app.acquireTokenSilent({ scopes: C.scopes, account });
+      const r = await app.acquireTokenSilent({ scopes: scopes(), account });
       jeton = { token: r.accessToken, exp: r.expiresOn ? +new Date(r.expiresOn) : Date.now() + 3000000 };
       return r.accessToken;
     } catch (e) {
@@ -82,7 +100,7 @@ function authError(msg) { const e = new Error(msg); e.status = 401; e.auth = tru
 export async function login() {
   localStorage.pf_lastLogin = String(Date.now());
   let hint = ""; try { hint = localStorage.pf_lastUser || ""; } catch { /* rien */ }
-  const req = { scopes: C.scopes };
+  const req = { scopes: scopes() };
   if (hint) req.loginHint = hint; else req.prompt = "select_account";
   await app.loginRedirect(req);
 }

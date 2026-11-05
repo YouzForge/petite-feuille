@@ -10,6 +10,7 @@ const MARKER = "00_REGLES_PROJET.md";            // fichier maître présent à 
 const folderCfg = () => { try { return JSON.parse(localStorage.getItem(FOLDER_KEY)); } catch { return null; } };
 export const hasFolder = () => !!folderCfg();
 export const forgetFolder = () => localStorage.removeItem(FOLDER_KEY);
+export function setFolderRemote(driveId, itemId) { localStorage.setItem(FOLDER_KEY, JSON.stringify({ driveId, itemId })); }
 export function setFolderPath(path) { localStorage.setItem(FOLDER_KEY, JSON.stringify({ path: path.trim().replace(/^\/+|\/+$/g, "") })); }
 
 /* Le dossier du journal porte le prénom de l'enfant : le code ne connaît que « 05_Journal », le vrai nom est retrouvé dans la racine du projet. */
@@ -42,28 +43,84 @@ function itemUrl(rel) {
 const SCAN_ROOTS = ["Documents/JDR", "Documents", ""];
 const pathUrl = p => p ? `${G}/me/drive/root:/${enc(p)}:` : `${G}/me/drive/root`;
 
-/** Sous-dossiers d'un dossier de OneDrive (chemin depuis la racine, "" = racine). */
-export async function listFolders(path) {
-  const r = await req(pathUrl(path) + "/children?$select=name,folder&$top=200");
+/* ---- parcours des dossiers (sélecteur) ----
+   Un « nœud » est l'un de :  { path }  dossier de Mes fichiers ("" = racine)
+                              { driveId, itemId }  dossier d'un autre OneDrive (dossier partagé, ou raccourci vers un dossier partagé)
+                              { shared:true }  la liste « Partagés avec moi » */
+const nodeOfChild = (x, parentPath) => {
+  if (x.remoteItem) {                                   // raccourci OneDrive ou dossier partagé : le contenu est dans un autre OneDrive
+    const ri = x.remoteItem;
+    const driveId = ri.parentReference && ri.parentReference.driveId;
+    if (!ri.folder || !driveId || !ri.id) return null;
+    return { name: x.name, driveId, itemId: ri.id };
+  }
+  if (!x.folder) return null;
+  return { name: x.name, path: parentPath == null ? undefined : (parentPath ? parentPath + "/" + x.name : x.name) };
+};
+const byName = (a, b) => a.name.localeCompare(b.name, "fr");
+
+/** Sous-dossiers d'un nœud. → [{ name, path } | { name, driveId, itemId }] triés. */
+export async function listFolderNodes(node) {
+  let url;
+  if (node.shared) {
+    const r = await req(`${G}/me/drive/sharedWithMe?$top=200`);
+    const j = await r.json();
+    return (j.value || []).map(x => nodeOfChild({ name: x.name || (x.remoteItem && x.remoteItem.name), remoteItem: x.remoteItem }, null)).filter(Boolean).sort(byName);
+  }
+  if (node.driveId) url = `${G}/drives/${node.driveId}/items/${node.itemId}/children?$select=name,folder,remoteItem&$top=200`;
+  else url = pathUrl(node.path || "") + "/children?$select=name,folder,remoteItem&$top=200";
+  const r = await req(url);
   const j = await r.json();
-  return (j.value || []).filter(x => x.folder).map(x => x.name).sort((a, b) => a.localeCompare(b, "fr"));
+  return (j.value || []).map(x => nodeOfChild(x, node.driveId ? null : (node.path || ""))).filter(Boolean).sort(byName);
 }
 
-/** Ce dossier contient-il le fichier maître du projet ? */
-export async function isProjectFolder(path) {
-  try { await req(`${G}/me/drive/root:/${enc((path ? path + "/" : "") + MARKER)}:?$select=id`); return true; }
+/** Sous-dossiers d'un dossier de Mes fichiers (compatibilité). */
+export async function listFolders(path) { return (await listFolderNodes({ path })).map(x => x.name); }
+
+/** Ce dossier contient-il le fichier maître du projet ? (nœud { path } ou { driveId, itemId }) */
+export async function isProjectFolder(node) {
+  if (typeof node === "string") node = { path: node };
+  const url = node.driveId
+    ? `${G}/drives/${node.driveId}/items/${node.itemId}:/${enc(MARKER)}:?$select=id`
+    : `${G}/me/drive/root:/${enc((node.path ? node.path + "/" : "") + MARKER)}:?$select=id`;
+  try { await req(url); return true; }
   catch (e) { if (e.status === 404) return false; throw e; }
 }
 
+/** Retrouve un dossier à partir d'un lien de partage OneDrive collé par l'utilisateur. → { driveId, itemId } ou lève une erreur lisible. */
+export async function resolveShareLink(link) {
+  link = (link || "").trim();
+  if (!/^https?:\/\//i.test(link)) throw new Error("Ce n'est pas un lien.");
+  const b64 = btoa(unescape(encodeURIComponent(link))).replace(/=+$/, "").replace(/\//g, "_").replace(/\+/g, "-");
+  const r = await req(`${G}/shares/u!${b64}/driveItem?$select=id,name,folder,parentReference,remoteItem`);
+  const j = await r.json();
+  const ri = j.remoteItem || j;
+  const driveId = (ri.parentReference && ri.parentReference.driveId) || (j.parentReference && j.parentReference.driveId);
+  const itemId = ri.id || j.id;
+  if (!driveId || !itemId) throw new Error("Lien non reconnu.");
+  if (!(ri.folder || j.folder)) throw new Error("Ce lien ne mène pas à un dossier.");
+  return { driveId, itemId };
+}
+
 /** Cherche le dossier du projet dans OneDrive. → true si trouvé (et mémorisé). */
+/** Comme isProjectFolder, mais un dossier illisible (accès refusé…) compte pour « non » ; seule une déconnexion remonte. */
+const safeIsProject = async n => { try { return await isProjectFolder(n); } catch (e) { if (e.status === 401 || e.auth) throw e; return false; } };
+
 export async function discoverFolder() {
   for (const root of SCAN_ROOTS) {
-    let names;
-    try { names = await listFolders(root); } catch (e) { if (e.status === 404) continue; throw e; }
-    const hits = await pool(names, async n => (await isProjectFolder(root ? root + "/" + n : n)) ? n : null, 6);
+    let nodes;
+    try { nodes = await listFolderNodes({ path: root }); } catch (e) { if (e.status === 404) continue; throw e; }
+    const hits = await pool(nodes, async n => (await safeIsProject(n)) ? n : null, 6);
     const hit = hits.find(Boolean);
-    if (hit) { setFolderPath(root ? root + "/" + hit : hit); return true; }
+    if (hit) { if (hit.driveId) setFolderRemote(hit.driveId, hit.itemId); else setFolderPath(hit.path); return true; }
   }
+  // dossier partagé par quelqu'un d'autre (seulement si cet appareil a l'accès élargi ; sinon Microsoft répond 403 et on passe)
+  try {
+    const shared = await listFolderNodes({ shared: true });
+    const hits = await pool(shared, async n => (await safeIsProject(n)) ? n : null, 4);
+    const hit = hits.find(Boolean);
+    if (hit) { setFolderRemote(hit.driveId, hit.itemId); return true; }
+  } catch (e) { if (e.status === 401) throw e; /* 403, 404… : pas de dossier partagé accessible */ }
   return false;
 }
 

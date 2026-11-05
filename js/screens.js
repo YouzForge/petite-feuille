@@ -1,9 +1,9 @@
 // Tous les écrans. Chaque écran renvoie { title, back, nav, node } ; le routeur (main.js) les affiche.
 import { h, icon, hearts, disc, spinner, longPress, ringBadge, speak, objSlot, emptySlot } from "./ui.js";
 import { COLLECTIONS, loadCollection, loadItem, loadHeroState, childView } from "./collections.js";
-import { readText, writeText, setFolderPath, listFolders, isProjectFolder } from "./graph.js";
+import { readText, writeText, setFolderPath, setFolderRemote, listFolderNodes, isProjectFolder, resolveShareLink } from "./graph.js";
 import { renderMd, plain, parseDoc } from "./md.js";
-import { login, logout, userName, accountHash } from "./auth.js";
+import { login, logout, userName, accountHash, isWide, enableWideAccess, disableWideAccess } from "./auth.js";
 import { getSession } from "./jouer.js";
 import { photoBox, sendPhoto } from "./photo.js";
 import { notesPanel, secondaryPanel, compagnonHead, SECONDARY } from "./pages.js";
@@ -265,25 +265,83 @@ export async function heroineView() {
   return fileView(encodeURIComponent(st.file));
 }
 
-/** Dossier du projet introuvable automatiquement : on le choisit en touchant les dossiers (aucune saisie). */
+/** Dossier du projet introuvable automatiquement : on le choisit en touchant les dossiers (aucune saisie).
+    Trois endroits possibles : Mes fichiers, les dossiers partagés par quelqu'un d'autre (liste « Partagés avec moi » ou lien collé). */
 export function folderSetupScreen(onDone) {
   const box = h("div", { class: "page", style: "padding-top:40px" });
-  const show = async path => {
-    box.replaceChildren(h("h2", null, "Choisis le dossier du projet"), spinner("…"));
-    let names = [], isProject = false, err = null;
-    try { [names, isProject] = await Promise.all([listFolders(path), isProjectFolder(path)]); } catch (e) { err = e; }
-    const up = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
-    box.replaceChildren(
-      h("h2", null, "Choisis le dossier du projet"),
-      h("div", { class: "muted" }, "Touche les dossiers jusqu'à celui du jeu (il contient le fichier 00_REGLES_PROJET.md). Une seule fois sur ce téléphone."),
-      h("div", { class: "kicker" }, path || "OneDrive"),
-      isProject ? h("button", { class: "btn primary block", onclick: () => { setFolderPath(path); onDone(); } }, "C'est ce dossier") : null,
-      path ? h("button", { class: "btn block", onclick: () => show(up) }, icon("back", 22), "Dossier au-dessus") : null,
-      err ? h("div", { class: "ko" }, "Impossible de lire ce dossier.") : null,
-      h("div", { class: "list" }, names.map(n => h("button", { class: "card", onclick: () => show(path ? path + "/" + n : n) },
-        h("div", { class: "row" }, icon("pin", 22, "var(--ink)"), h("div", { class: "grow" }, h("h3", null, n)), icon("next", 22, "var(--muted)"))))));
+  const draw = (...kids) => box.replaceChildren(...kids.flat().filter(k => k != null && k !== false));   // (replaceChildren écrirait « null »)
+  const TITLE = h("h2", null, "Choisis le dossier du projet");
+  const save = node => { if (node.driveId) setFolderRemote(node.driveId, node.itemId); else setFolderPath(node.path); onDone(); };
+  const err403 = e => e && (e.status === 403 || e.status === 401);
+
+  /* vue « Partagés avec moi » */
+  const showShared = async (back) => {
+    if (!isWide()) {
+      draw(TITLE,
+        h("div", { class: "card" },
+          h("h3", null, "Le dossier est partagé par quelqu'un d'autre"),
+          h("div", { class: "muted" }, "Pour le retrouver, Microsoft doit te demander une autorisation en plus (accès aux fichiers partagés avec toi). Il te la demande une seule fois, sur ce téléphone. Tu reviendras ici ensuite.")),
+        h("button", { class: "btn primary block", onclick: () => enableWideAccess() }, icon("lock", 22, "#fff"), "Autoriser l'accès aux dossiers partagés"),
+        h("button", { class: "btn block", onclick: back }, icon("back", 22), "Retour"));
+      return;
+    }
+    draw(TITLE, spinner("…"));
+    let nodes = [], e1 = null;
+    try { nodes = await listFolderNodes({ shared: true }); } catch (e) { e1 = e; }
+    const linkEl = h("input", { class: "field", type: "url", placeholder: "Coller ici le lien de partage du dossier" });
+    const msg = h("div", { class: "ko", style: "display:none" });
+    const fail = t => { msg.textContent = t; msg.style.display = ""; };
+    const tryLink = async () => {
+      msg.style.display = "none";
+      try {
+        const n = await resolveShareLink(linkEl.value);
+        if (!(await isProjectFolder(n))) { fail("Ce dossier ne contient pas le fichier 00_REGLES_PROJET.md : ce n'est pas le dossier du jeu. Ouvre-le et touche le bon sous-dossier."); showFolder(n, [], back); return; }
+        save(n);
+      } catch (e) { fail(err403(e) ? "Microsoft refuse l'accès à ce lien : le dossier est-il bien partagé avec ton compte ?" : (e.status === 404 ? "Lien introuvable." : (e.message || "Lien non reconnu."))); }
+    };
+    draw(TITLE,
+      h("div", { class: "muted" }, "Dossiers que quelqu'un a partagés avec toi. Touche celui du jeu."),
+      e1 ? h("div", { class: "ko" }, err403(e1) ? "Microsoft n'a pas donné l'accès aux dossiers partagés. Touche « Défaire l'autorisation » ci-dessous puis recommence." : "Impossible de lire la liste des dossiers partagés.") : null,
+      h("div", { class: "list" }, nodes.length || e1 ? nodes.map(n => card(n.name, () => showFolder(n, [], () => showShared(back)))) : [h("div", { class: "muted" }, "Rien de partagé n'apparaît dans cette liste. Colle le lien de partage ci-dessous.")]),
+      h("div", { class: "kicker" }, "Ou avec le lien de partage"),
+      linkEl, msg,
+      h("button", { class: "btn primary block", onclick: tryLink }, "Utiliser ce lien"),
+      h("button", { class: "btn block", onclick: back }, icon("back", 22), "Retour"),
+      e1 ? h("button", { class: "btn block", onclick: () => { disableWideAccess(); showRoot(); } }, "Défaire l'autorisation") : null);
   };
-  show("");
+
+  const card = (name, fn, ic = "pin") => h("button", { class: "card", onclick: fn },
+    h("div", { class: "row" }, icon(ic, 22, "var(--ink)"), h("div", { class: "grow" }, h("h3", null, name)), icon("next", 22, "var(--muted)")));
+
+  /* vue d'un dossier (pile = chemin parcouru, pour « Dossier au-dessus ») */
+  const showFolder = async (node, stack, onTop) => {
+    draw(TITLE, spinner("…"));
+    let nodes = [], isProject = false, err = null;
+    try { [nodes, isProject] = await Promise.all([listFolderNodes(node), isProjectFolder(node)]); } catch (e) { err = e; }
+    const label = node.path != null ? (node.path || "OneDrive") : (node.name || "Dossier partagé");
+    const up = () => stack.length ? showFolder(stack[stack.length - 1], stack.slice(0, -1), onTop) : onTop();
+    draw(TITLE,
+      h("div", { class: "muted" }, "Touche les dossiers jusqu'à celui du jeu (il contient le fichier 00_REGLES_PROJET.md). Une seule fois sur ce téléphone."),
+      h("div", { class: "kicker" }, label),
+      isProject ? h("button", { class: "btn primary block", onclick: () => save(node) }, "C'est ce dossier") : null,
+      (stack.length || node.path || node.driveId) ? h("button", { class: "btn block", onclick: up }, icon("back", 22), "Dossier au-dessus") : null,
+      err ? h("div", { class: "ko" }, "Impossible de lire ce dossier.") : null,
+      h("div", { class: "list" }, nodes.map(n => card(n.name, () => showFolder(n, [...stack, node], onTop)))));
+  };
+
+  const showRoot = async () => {
+    draw(TITLE, spinner("…"));
+    let nodes = [], err = null;
+    try { nodes = await listFolderNodes({ path: "" }); } catch (e) { err = e; }
+    draw(TITLE,
+      h("div", { class: "muted" }, "Touche les dossiers jusqu'à celui du jeu (il contient le fichier 00_REGLES_PROJET.md). Une seule fois sur ce téléphone."),
+      h("div", { class: "kicker" }, "OneDrive"),
+      card("Partagés avec moi", () => showShared(showRoot), "lock"),
+      err ? h("div", { class: "ko" }, "Impossible de lire ce dossier.") : null,
+      h("div", { class: "list" }, nodes.map(n => card(n.name, () => showFolder(n, [], showRoot)))));
+  };
+
+  showRoot();
   return { node: box };
 }
 
