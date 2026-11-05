@@ -359,41 +359,51 @@ export async function photosScreen() {
   };
 }
 
-/* ------------------------------------------------------------------ idée du soir (onglet des notes) */
-export async function ideaPanel(notesFile, onSaved) {
+/* ------------------------------------------------------------------ Notes du MJ : une seule page pour les notes et les idées */
+const NOTES_TITRE = "# Inbox — idées et notes du MJ";
+
+/** Range une nouvelle entrée à la fin de la section « À traiter » (la crée si besoin). Le reste du fichier n'est pas touché. */
+export function addToInbox(text, entry) {
+  let t = String(text || "").trimEnd();
+  if (!/^## À traiter\s*$/m.test(t)) t = (t || NOTES_TITRE) + "\n\n## À traiter\n\n## Traité";
+  const i = t.search(/^## Traité\s*$/m);
+  if (i < 0) return t + "\n\n" + entry + "\n";
+  return t.slice(0, i).trimEnd() + "\n\n" + entry + "\n\n" + t.slice(i) + "\n";
+}
+
+/** Notes et idées : une seule zone de saisie. Chaque entrée est rangée sous « À traiter » ; Claude la déplace sous « Traité » une fois exploitée. */
+export async function notesPanel(notesFile, onSaved) {
   const names = [];
   for (const id of ["objet", "personnage", "lieu", "creature", "compagnon"]) {
     try { const { items } = await loadCollection(COLLECTIONS[id]); names.push(...items.map(i => i.name)); } catch { /* ok */ }
   }
   const picks = new Set();
-  const field = h("textarea", { class: "field", placeholder: "Décris l'histoire que tu imagines (le micro du clavier fonctionne ici)", "aria-label": "Ton idée" });
+  const field = h("textarea", { class: "field", style: "min-height:140px", placeholder: "Une idée d'histoire, un élément pour l'univers, une phrase de la joueuse, un rappel… (le micro du clavier fonctionne ici)", "aria-label": "Nouvelle note" });
   const chipBox = h("div", { class: "row", style: "flex-wrap:wrap;gap:8px" });
   const drawChips = () => chipBox.replaceChildren(...[...names.slice(0, 10), "Fils ouverts"].map(n => h("button", { class: "tab" + (picks.has(n) ? " on" : ""), style: "flex:0 1 auto;padding:8px 14px", onclick: () => { picks.has(n) ? picks.delete(n) : picks.add(n); drawChips(); } }, n)));
   drawChips();
   const msg = h("div", { class: "muted" });
-  const btn = h("button", { class: "btn primary block", style: "font-size:20px;padding:14px" }, icon("bulb", 24, "#fff"), "Envoyer à Claude");
+  const btn = h("button", { class: "btn primary block" }, icon("bulb", 24, "#fff"), "Enregistrer dans OneDrive");
   btn.addEventListener("click", async () => {
-    const idea = field.value.trim(); if (!idea) { msg.className = "ko"; msg.textContent = "Écris d'abord ton idée."; return; }
+    const note = field.value.trim(); if (!note) { msg.className = "ko"; msg.textContent = "Écris d'abord quelque chose."; return; }
     btn.disabled = true; msg.className = "muted"; msg.textContent = "Enregistrement…";
     try {
-      const fresh = await readText(notesFile);
+      const fresh = await readText(notesFile);                  // on relit juste avant d'écrire
       if (fresh.stale) throw new Error("Pas de réseau : rien n'a été enregistré.");
       const d = new Date(), p = n => String(n).padStart(2, "0");
       const when = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
       const reprise = picks.size ? `\n**À reprendre :** ${[...picks].join(", ")}` : "";
-      const next = `${(fresh.text || "# Idées en vrac").trimEnd()}\n\n## ${when} — Idée du soir\n${idea}${reprise}\n`;
+      const next = addToInbox(fresh.text, `### ${when}\n${note}${reprise}`);
       await writeText(notesFile, next);
       field.value = ""; picks.clear(); drawChips();
-      msg.className = "ok"; msg.textContent = "Idée enregistrée. Claude la transformera à la discussion suivante.";
+      msg.className = "ok"; msg.textContent = "Enregistré.";
       if (onSaved) onSaved(next);
     } catch (e) { msg.className = "ko"; msg.textContent = e.message || "Échec de l'enregistrement."; }
     btn.disabled = false;
   });
   return h("div", { class: "list" },
-    h("div", { class: "kicker" }, "Ton idée en quelques lignes"), field,
-    h("div", { class: "kicker" }, "À reprendre des histoires précédentes"), chipBox, btn, msg,
-    h("div", { class: "muted", style: "font-size:15px" }, "L'idée est écrite dans ", h("code", null, notesFile), ". Claude la transforme à la discussion suivante."),
-    h("div", { class: "card dashed muted" }, h("span", { class: "chip", style: "align-self:flex-start;background:#FAE7B5" }, "Bientôt"), "Version rapide dans l'appli, plus tard : elle demandera une clé d'API facturée à l'usage."));
+    field,
+    h("div", { class: "kicker" }, "Cela concerne (facultatif)"), chipBox, btn, msg);
 }
 
 /* ------------------------------------------------------------------ Monde (mode MJ) */

@@ -6,7 +6,7 @@ import { renderMd, plain, parseDoc } from "./md.js";
 import { login, logout, userName, accountHash } from "./auth.js";
 import { getSession } from "./jouer.js";
 import { photoBox, sendPhoto } from "./photo.js";
-import { ideaPanel, secondaryPanel, compagnonHead, SECONDARY } from "./pages.js";
+import { notesPanel, secondaryPanel, compagnonHead, SECONDARY } from "./pages.js";
 import { listRoute } from "./forms.js";
 import { parseSteps } from "./md.js";
 
@@ -296,38 +296,11 @@ export async function mjNotes() {
   const shown = h("div", { class: "card md" });
   const showText = t => { shown.innerHTML = t ? renderMd(t, { dropTitle: false }) : "<p class='muted'>Aucune note pour l'instant.</p>"; };
   showText(cur.text);
-  let current = cur;
-  const field = h("textarea", { class: "field", placeholder: "Une idée, une phrase de la joueuse, un rappel… (le micro du clavier fonctionne ici)", "aria-label": "Nouvelle note" });
-  const msg = h("div", { class: "muted" });
-  const btn = h("button", { class: "btn primary block" }, "Enregistrer dans OneDrive");
-  btn.addEventListener("click", async () => {
-    const note = field.value.trim(); if (!note) return;
-    msg.className = "muted"; msg.textContent = "Enregistrement…"; btn.disabled = true;
-    try {
-      const fresh = await readText(NOTES);                      // on relit juste avant d'écrire
-      if (fresh.stale) throw new Error("Pas de réseau : rien n'a été enregistré.");
-      const d = new Date(), p = n => String(n).padStart(2, "0");
-      const when = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
-      const base = (fresh.text || "# Idées en vrac").trimEnd();
-      const next = `${base}\n\n## ${when}\n${note}\n`;
-      await writeText(NOTES, next);
-      field.value = ""; showText(next);
-      msg.className = "ok"; msg.textContent = "Note enregistrée.";
-    } catch (e) { msg.className = "ko"; msg.textContent = e.message || "Échec de l'enregistrement."; }
-    btn.disabled = false;
-  });
-  const notesPane = h("div", { class: "list" }, field, btn, msg, h("div", { class: "kicker" }, "Notes déjà enregistrées"), shown);
-  const ideaPane = h("div", { class: "list" });
-  let ideaBuilt = false;
-  const t1 = h("button", { class: "tab on" }, "Mes notes"), t2 = h("button", { class: "tab" }, "Idée du soir");
-  const pane = h("div", null, notesPane);
-  t1.addEventListener("click", () => { t1.className = "tab on"; t2.className = "tab"; pane.replaceChildren(notesPane); });
-  t2.addEventListener("click", async () => {
-    t2.className = "tab on"; t1.className = "tab"; pane.replaceChildren(ideaPane);
-    if (!ideaBuilt) { ideaBuilt = true; ideaPane.append(await ideaPanel(NOTES, showText)); }
-  });
+  const panel = await notesPanel(NOTES, showText);
   return {
     title: "Notes", nav: "notes",
-    node: h("div", { class: "page with-nav" }, staleBanner(cur.stale), h("div", { class: "tabs" }, t1, t2), pane)
+    node: h("div", { class: "page with-nav" }, staleBanner(cur.stale), panel,
+      h("div", { class: "kicker" }, "Notes déjà enregistrées"), shown,
+      h("div", { class: "muted", style: "font-size:15px" }, "Tout est écrit dans ", h("code", null, NOTES), ", sous « À traiter ». Claude s'en sert pour construire les histoires et nourrir l'univers, puis les range sous « Traité »."))
   };
 }
