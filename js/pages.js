@@ -382,6 +382,11 @@ export async function notesPanel(notesFile, onSaved) {
   const chipBox = h("div", { class: "row", style: "flex-wrap:wrap;gap:8px" });
   const drawChips = () => chipBox.replaceChildren(...[...names.slice(0, 10), "Fils ouverts"].map(n => h("button", { class: "tab" + (picks.has(n) ? " on" : ""), style: "flex:0 1 auto;padding:8px 14px", onclick: () => { picks.has(n) ? picks.delete(n) : picks.add(n); drawChips(); } }, n)));
   drawChips();
+  let type = "";                                                  // "" = je ne sais pas : Claude décide d'après le texte
+  const TYPES = [["histoire", "Une histoire"], ["univers", "L'univers"], ["", "Je ne sais pas"]];
+  const typeBox = h("div", { class: "row", style: "flex-wrap:wrap;gap:8px" });
+  const drawTypes = () => typeBox.replaceChildren(...TYPES.map(([v, l]) => h("button", { class: "tab" + (type === v ? " on" : ""), style: "flex:0 1 auto;padding:8px 14px", "aria-pressed": String(type === v), onclick: () => { type = v; drawTypes(); } }, l)));
+  drawTypes();
   const msg = h("div", { class: "muted" });
   const btn = h("button", { class: "btn primary block" }, icon("bulb", 24, "#fff"), "Enregistrer dans OneDrive");
   btn.addEventListener("click", async () => {
@@ -393,9 +398,10 @@ export async function notesPanel(notesFile, onSaved) {
       const d = new Date(), p = n => String(n).padStart(2, "0");
       const when = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
       const reprise = picks.size ? `\n**À reprendre :** ${[...picks].join(", ")}` : "";
-      const next = addToInbox(fresh.text, `### ${when}\n${note}${reprise}`);
+      const typeLigne = type ? `\n**Type :** ${type}` : "";
+      const next = addToInbox(fresh.text, `### ${when}\n${note}${typeLigne}${reprise}`);
       await writeText(notesFile, next);
-      field.value = ""; picks.clear(); drawChips();
+      field.value = ""; picks.clear(); type = ""; drawChips(); drawTypes();
       msg.className = "ok"; msg.textContent = "Enregistré.";
       if (onSaved) onSaved(next);
     } catch (e) { msg.className = "ko"; msg.textContent = e.message || "Échec de l'enregistrement."; }
@@ -403,6 +409,7 @@ export async function notesPanel(notesFile, onSaved) {
   });
   return h("div", { class: "list" },
     field,
+    h("div", { class: "kicker" }, "C'est plutôt pour (facultatif)"), typeBox,
     h("div", { class: "kicker" }, "Cela concerne (facultatif)"), chipBox, btn, msg);
 }
 
