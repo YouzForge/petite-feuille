@@ -88,7 +88,7 @@ export async function getToken() {
       if (faut_se_reconnecter(e)) { jeton = null; throw authError("Reconnexion nécessaire"); }
       // réseau coupé, 4G qui hésite… : ce n'est PAS une déconnexion. L'erreur n'a pas de code HTTP : l'appli lit alors sa copie locale.
       console.warn("Jeton : erreur passagère", e && (e.errorCode || e.message));
-      throw new Error("Réseau indisponible");
+      const err = new Error("Réseau indisponible"); err.detail = String((e && (e.errorCode || e.name)) || "inconnue"); throw err;
     } finally { enCours = null; }
   })();
   return enCours;

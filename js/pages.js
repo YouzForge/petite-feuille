@@ -7,9 +7,10 @@ import { readText, writeText, listDir, pool } from "./graph.js";
 import { renderMd, plain, parseDoc, sections } from "./md.js";
 import { photoBox, photoControl } from "./photo.js";
 import { updateItem } from "./forms.js";
+import { staleBanner } from "./banner.js";
 
 const link = (path, cls, ...kids) => h("a", { class: cls, href: "#" + path }, ...kids);
-const stale = s => s ? h("div", { class: "banner" }, "Hors connexion : dernière version enregistrée sur ce téléphone.") : null;
+const stale = s => staleBanner(!!s);
 const flat = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/œ/g, "oe").replace(/’/g, "'").toLowerCase();
 
 /** Bouton rond « écouter » (voix du téléphone). */

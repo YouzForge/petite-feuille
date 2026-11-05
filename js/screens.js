@@ -10,10 +10,10 @@ import { notesPanel, secondaryPanel, compagnonHead, SECONDARY } from "./pages.js
 import { listRoute } from "./forms.js";
 import { parseSteps } from "./md.js";
 import { controleHistoire } from "./controle.js";
+import { staleBanner } from "./banner.js";
 
 const go = path => { location.hash = "#" + path; };
 const link = (path, cls, ...kids) => h("a", { class: cls, href: "#" + path }, ...kids);
-const staleBanner = stale => stale ? h("div", { class: "banner" }, "Hors connexion : dernière version enregistrée sur ce téléphone.") : null;
 
 /* ------------------------------------------------------------------ connexion */
 export function loginScreen() {

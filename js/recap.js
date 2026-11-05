@@ -3,6 +3,7 @@ import { h, icon } from "./ui.js";
 import { getSession, clearSession } from "./jouer.js";
 import { writeText } from "./graph.js";
 import { heroName } from "./collections.js";
+import { soinsText, gagneesText, utiliseesText } from "./potions.js";
 
 const DRAFT = "pf:recap";
 const pad = n => String(n).padStart(2, "0");
@@ -31,6 +32,7 @@ function fresh(s) {
     if (s.coeurs0 != null) r.coeursPerdus = String(Math.max(0, s.coeurs0 - s.coeurs));
     r.armure = String(s.armure);
     r.tombee = s.coeurs === 0 ? "Oui" : "Non";
+    r.soins = soinsText(s); r.gagnes = gagneesText(s); r.perdus = utiliseesText(s);
   }
   return r;
 }

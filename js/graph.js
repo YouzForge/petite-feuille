@@ -137,6 +137,15 @@ const cacheGet = k => { try { const v = localStorage.getItem(P + k); return v ==
 const cacheSet = (k, v) => { try { localStorage.setItem(P + k, JSON.stringify(v)); } catch { /* plein : tant pis */ } };
 const isOffline = e => !e.status; // pas de code HTTP = réseau coupé
 
+/* Dernière raison pour laquelle l'application a dû se rabattre sur la copie du téléphone (affichée dans le bandeau « Hors connexion »). */
+let lastIssue = null;
+export const getLastIssue = () => lastIssue;
+const noteIssue = e => {
+  lastIssue = e.status ? "OneDrive a répondu « erreur " + e.status + " »"
+    : e.detail ? "la connexion Microsoft n'a pas pu être renouvelée (" + e.detail + ")"
+    : "le téléphone n'a pas pu joindre OneDrive (" + (e.message || "réseau") + ")";
+};
+
 /** Liste d'un dossier. → { data:[{name,dir,size}], stale, missing } */
 export async function listDir(rel) {
   const key = "ls:" + rel;
@@ -149,7 +158,7 @@ export async function listDir(rel) {
   } catch (e) {
     if (e.status === 404) return { data: [], stale: false, missing: true };
     const c = cacheGet(key);
-    if (c && (isOffline(e) || e.status >= 500)) return { data: c, stale: true };
+    if (c && (isOffline(e) || e.status >= 500)) { noteIssue(e); return { data: c, stale: true }; }
     throw e;
   }
 }
@@ -165,7 +174,7 @@ export async function readText(rel) {
   } catch (e) {
     if (e.status === 404) return { text: null, stale: false };
     const c = cacheGet(key);
-    if (c != null && (isOffline(e) || e.status >= 500)) return { text: c, stale: true };
+    if (c != null && (isOffline(e) || e.status >= 500)) { noteIssue(e); return { text: c, stale: true }; }
     throw e;
   }
 }

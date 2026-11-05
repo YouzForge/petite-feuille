@@ -5,6 +5,7 @@ import { parseSteps, ruleSections, renderMd, inlineMd } from "./md.js";
 import { readText } from "./graph.js";
 import { parseVoie, MAX_VOIES } from "./voies.js";
 import { controleHistoire } from "./controle.js";
+import { POTIONS, addPotion, drink, undo, canUndo, coeursMax } from "./potions.js";
 
 const go = path => { location.hash = "#" + path; };
 
@@ -163,7 +164,7 @@ export async function jouerScreen(file) {
   if (!s || s.file !== file) {
     let st = { coeurs: 3, armure: 1 };
     try { st = await loadHeroState(); } catch (e) { if (e.auth) throw e; }
-    s = { file, titre: item.name, step: 0, coeurs: st.coeurs, armure: st.armure, coeurs0: st.coeurs, armure0: st.armure, etapes: steps.map(x => x.title), phrases: [], jets: [], started: Date.now() };
+    s = { file, titre: item.name, step: 0, coeurs: st.coeurs, armure: st.armure, coeurs0: st.coeurs, coeursMax: st.coeurs, armure0: st.armure, potions: [], bus: [], ajoutees: [], etapes: steps.map(x => x.title), phrases: [], jets: [], started: Date.now() };
     saveSession(s);
   }
   const save = () => saveSession(s);
@@ -174,6 +175,7 @@ export async function jouerScreen(file) {
   const onVis = () => keepAwake();
   document.addEventListener("visibilitychange", onVis);
   const closers = [];
+  let flash = "";
 
   const root = h("div", { class: "jouer" });
   const draw = () => {
@@ -199,8 +201,36 @@ export async function jouerScreen(file) {
         fill === "shield" ? [icon("shield", 38, "var(--ink)", 1.6, "#A9BDD1"), h("span", { style: "font:600 34px Fredoka" }, String(val))] : null,
         val === 0 && fill === "hearts" ? h("span", { class: "muted" }, "0 cœur") : null),
       h("button", { class: "iconbtn big", "aria-label": `Plus de ${label}`, onclick: () => { set(Math.min(max, val + 1)); save(); draw(); } }, icon("plus", 30)));
+    const potionBtn = p => h("button", { class: "potion" + (p.reste === 1 ? " half" : ""),
+        "aria-label": p.reste === 2
+          ? `${p.nom} : boire la moitié (${p.moitie} cœur${p.moitie > 1 ? "s" : ""})`
+          : `${p.nom} : finir la potion (${p.entiere - p.moitie} cœur${p.entiere - p.moitie > 1 ? "s" : ""})`,
+        onclick: () => {
+          const r = drink(s, p.id); save();
+          flash = r.ok ? `+${r.gain} cœur${r.gain > 1 ? "s" : ""}` + (r.fini ? " : potion finie !" : " : il reste la moitié.")
+            : r.raison === "pleins" ? `Les cœurs de ${heroName()} sont déjà pleins : la potion reste pour plus tard.` : "";
+          draw();
+        } },
+      icon("potion", 40, "var(--ink)", 1.8, p.reste === 2 ? "#C23B2E" : "#E9A9A2"),
+      h("span", { class: "plabel" }, p.reste === 2 ? "Boire ½" : "Finir ½"));
+    const addP = h("button", { class: "potion add", "aria-label": "Ajouter une potion",
+        onclick: () => {
+          const types = Object.keys(POTIONS);
+          const add = t => { addPotion(s, t); save(); flash = ""; draw(); };
+          if (types.length === 1) return add(types[0]);
+          let close;
+          close = openSheet("Ajouter une potion", h("div", { class: "list" }, types.map(t => h("button", { class: "btn block", onclick: () => { close(); add(t); } }, POTIONS[t].nom))));
+          closers.push(close);
+        } },
+      icon("plus", 26), h("span", { class: "plabel" }, "Potion"));
+    const potionsRow = h("div", { class: "potions" },
+      h("div", { class: "kicker" }, "Potions"),
+      h("div", { class: "row", style: "gap:10px;flex-wrap:wrap" }, (s.potions || []).map(potionBtn), addP,
+        canUndo(s) ? h("button", { class: "linkbtn", onclick: () => { undo(s); save(); flash = ""; draw(); } }, "Annuler") : null),
+      flash ? h("div", { class: "pflash", role: "status" }, flash) : null);
     const state = h("div", { class: "card" },
       counter("cœurs", "heart", s.coeurs, v => s.coeurs = v, 30, "hearts"),
+      potionsRow,
       counter("armure", "shield", s.armure, v => s.armure = v, 5, "shield"),
       s.coeurs === 0 ? h("div", { class: "tip" }, `${heroName()} tombe dans les pommes : elle va se reposer, puis elle repart. Rien de grave !`) : null);
 

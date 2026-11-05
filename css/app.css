@@ -30,6 +30,10 @@ svg{display:block;flex:none}
 .kicker{font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .muted{color:var(--muted)}
 .banner{background:var(--yellow);border:3px solid var(--ink);border-radius:16px;padding:8px 12px;font-size:14px}
+.banner .linkbtn{background:none;border:0;padding:0 2px;font:inherit;font-weight:800;text-decoration:underline;color:inherit}
+.banner-why{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.banner-why p{margin:0}
+.btn.small{padding:6px 12px;font-size:14px;box-shadow:0 2px 0 var(--shadow)}
 
 /* boutons */
 .iconbtn{width:44px;height:44px;border-radius:50%;border:3px solid var(--ink);background:var(--card);display:grid;place-items:center;padding:0;box-shadow:0 3px 0 var(--shadow)}
@@ -216,3 +220,13 @@ a.iconbtn.plus,button.iconbtn.plus{background:var(--teal);box-shadow:0 3px 0 var
 .bourse .count{font:600 54px/1 "Fredoka",sans-serif}
 .coins{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:320px}
 .coins svg{display:block}
+
+/* potions (mode Jouer) */
+.potions{display:flex;flex-direction:column;gap:6px;padding:6px 0}
+.potion{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:84px;min-height:84px;padding:6px 10px;background:#fff;border:3px solid var(--ink);border-radius:18px;font:inherit;color:var(--ink);box-shadow:0 3px 0 var(--ink)}
+.potion:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
+.potion.half{background:#FBE3DF}
+.potion.add{background:transparent;border-style:dashed;box-shadow:none;min-width:72px}
+.potion .plabel{font-size:14px;font-weight:800}
+.pflash{font-weight:800;font-size:16px}
+.potions .linkbtn{background:none;border:0;font:inherit;font-weight:800;text-decoration:underline;color:var(--muted);padding:8px}
