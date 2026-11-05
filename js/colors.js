@@ -6,6 +6,7 @@ export const OBJETS = {
   potion_vie: { nom: "Potion de vie", couleur: "#C23B2E", icone: "potion", emojis: ["🧪"], match: /potion de vie/i },
   epee: { nom: "Épée", couleur: "#B4BBC3", icone: "sword", emojis: ["⚔️", "⚔"], match: /[ée]p[ée]e/i, equip: true },
   casque: { nom: "Casque en fer", couleur: "#7F95AB", icone: "helmet", emojis: ["🪖"], match: /casque/i, equip: true },
+  piece: { nom: "Pièce de la Petite Feuille", couleur: "#F2B81C", icone: "coin", emojis: ["🪙"], match: /^\s*[-*]?\s*(🪙\s*)?pi[èe]ce de la petite feuille/i },
   lettre_magalie: { nom: "Lettre de Magalie", couleur: "#E8C766", icone: "note", emojis: ["💌"], match: /lettre/i }
 };
 

@@ -9,6 +9,7 @@ import { photoBox, sendPhoto } from "./photo.js";
 import { notesPanel, secondaryPanel, compagnonHead, SECONDARY } from "./pages.js";
 import { listRoute } from "./forms.js";
 import { parseSteps } from "./md.js";
+import { controleHistoire } from "./controle.js";
 
 const go = path => { location.hash = "#" + path; };
 const link = (path, cls, ...kids) => h("a", { class: cls, href: "#" + path }, ...kids);
@@ -69,6 +70,7 @@ const TILES = [
   { name: "Mes monstres", icon: "monster", color: "var(--purple)", to: "/child/c/creature" },
   { name: "Mes amis", icon: "friends", color: "var(--yellow)", to: "/child/c/personnage" },
   { name: "Mes compagnons", icon: "paw", color: "var(--red)", to: "/child/c/compagnon" },
+  { name: "Ma bourse", icon: "purse", color: "var(--leather)", to: "/child/bourse" },
   { name: "Mes outils", icon: "tools", color: "var(--muted)", to: "/child/outils" }
 ];
 
@@ -196,6 +198,12 @@ export async function collectionFiche(colId, file, mode) {
     if (v.description) nodes.push(h("div", { class: "card" }, h("div", null, v.description)));
     if (v.faits) nodes.push(h("div", { class: "card md" }, h("h3", null, "Ce que j'ai fait"), h("div", { html: renderMd(v.faits) })));
   } else {
+    if (colId === "prochaine") {
+      const c = controleHistoire(item.body);
+      nodes.push(c.problemes.length
+        ? h("div", { class: "card tip" }, h("strong", null, c.bloquant ? "Le mode Jouer ne pourra pas lire cette histoire" : "À vérifier avant de jouer"), h("ul", { class: "steplist" }, c.problemes.map(x => h("li", null, x))))
+        : h("div", { class: "muted", style: "font-size:15px" }, `Prête pour le mode Jouer : ${c.etapes} étapes, ${c.voies} voies, ${c.fins} fins.`));
+    }
     if (colId === "prochaine") nodes.push(link("/mj/jouer/" + encodeURIComponent(item.file), "btn primary block", icon("dice", 26, "#fff"), "Jouer cette histoire"));
     const main = [...(colId === "compagnon" ? await compagnonHead(item) : []), h("div", { class: "card md", html: renderMd(item.body) })];
     if (SECONDARY[colId]) {

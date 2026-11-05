@@ -1,9 +1,10 @@
 // Mode Jouer : l'aide-mémoire de la partie, téléphone posé sur la table.
 import { h, icon, hearts, spinner } from "./ui.js";
 import { COLLECTIONS, loadItem, loadHeroState, heroName } from "./collections.js";
-import { parseSteps, ruleSections, renderMd } from "./md.js";
+import { parseSteps, ruleSections, renderMd, inlineMd } from "./md.js";
 import { readText } from "./graph.js";
 import { parseVoie, MAX_VOIES } from "./voies.js";
+import { controleHistoire } from "./controle.js";
 
 const go = path => { location.hash = "#" + path; };
 
@@ -77,7 +78,7 @@ function toolsBody(session, onRoll) {
     pane.replaceChildren(spinner("Chargement des règles…"));
     try {
       const r = await readText("00_REGLES_PROJET.md");
-      const parts = r.text ? ruleSections(r.text, ["4.1", "4.2", "4.3", "4.4", "4.5", "4.9"]) : [];
+      const parts = r.text ? ruleSections(r.text, ["4.1", "4.2", "4.3", "4.4", "4.5", "4.9", "4.10"]) : [];
       pane.replaceChildren(h("div", { class: "card md", html: parts.length ? renderMd(parts.join("\n\n")) : "<p>Règles introuvables.</p>" }));
     } catch (e) { pane.replaceChildren(h("div", { class: "card ko" }, "Impossible de lire les règles : " + (e.message || e))); }
   };
@@ -92,7 +93,7 @@ function toolsBody(session, onRoll) {
 function endingsOf(fields) {
   return fields.map(f => {
     const code = (f.label.match(/^fin\s*([a-z0-9]*)/i) || [, ""])[1].toUpperCase();
-    return { code: code || String(1), texte: [f.text, ...f.items].filter(Boolean).join(" · ") };
+    return { code: code || String(1), texte: [f.text, ...f.items].filter(Boolean).join(" · ").replace(/\*\*|\*|`/g, "") };
   });
 }
 function endingsBox(fields, fin, onFin) {
@@ -119,12 +120,13 @@ function stepCard(step, onAsk, fin, onFin) {
   const kids = [h("h2", { style: "font-size:30px" }, step.title)];
   let nbVoies = 0, finDone = false;
   for (const f of step.fields) {
+    if (f.note) { kids.push(h("div", { class: "muted", style: "font-style:italic" }, f.text)); continue; }
     const key = f.label.toLowerCase();
-    const list = f.items.length ? h("ul", { class: "steplist" }, f.items.map(i => h("li", null, i))) : null;
-    const text = f.text ? h("div", null, f.text) : null;
+    const list = f.items.length ? h("ul", { class: "steplist" }, f.items.map(i => h("li", { html: inlineMd(i) }))) : null;
+    const text = f.text ? h("div", { html: inlineMd(f.text) }) : null;
     let v;
     if (/^[àa] trouver/.test(key)) {
-      kids.push(h("div", { style: "font-size:19px" }, h("span", { style: "color:var(--red);font-weight:800" }, "À trouver : "), f.text));
+      kids.push(h("div", { style: "font-size:19px" }, h("span", { style: "color:var(--red);font-weight:800" }, "À trouver : "), h("span", { html: inlineMd(f.text) })));
     } else if ((v = parseVoie(f.label))) {
       nbVoies++;
       const pill = v.verrou ? "Pas encore" + (v.pouvoir ? " · " + v.pouvoir : "")
@@ -142,7 +144,7 @@ function stepCard(step, onAsk, fin, onFin) {
       finDone = true;
       kids.push(endingsBox(step.fields.filter(x => /^fin\s*[a-z0-9]*\s*$/i.test(x.label)), fin, onFin));
     } else if (/^si elle h[ée]site/.test(key)) {
-      kids.push(h("div", { class: "tip" }, h("strong", null, "Si elle hésite : "), f.text, list));
+      kids.push(h("div", { class: "tip" }, h("strong", null, "Si elle hésite : "), h("span", { html: inlineMd(f.text) }), list));
     } else {
       kids.push(h("div", { class: "card" }, h("strong", null, f.label), text, list));
     }
@@ -184,7 +186,8 @@ export async function jouerScreen(file) {
     const bars = h("div", { class: "bars" }, steps.map((_, i) => h("button", { class: "bar" + (i <= s.step ? " on" : ""), "aria-label": `Étape ${i + 1}`, onclick: () => { s.step = i; save(); draw(); } })));
     const stepNode = steps.length
       ? stepCard(steps[s.step], () => ask(), s.fin, v => chooseEnding(v))
-      : h("div", { class: "card md" }, h("h3", null, "Cette histoire n'a pas encore d'étapes de jeu"), h("div", { class: "muted" }, "Ajoute une section « Étapes de jeu » à son fichier (voir le modèle d'histoire). En attendant, voici son contenu :"), h("div", { html: renderMd(item.body) }));
+      : h("div", { class: "card md" }, h("h3", null, "Cette histoire n'a pas d'étapes de jeu lisibles"),
+          h("div", { class: "muted" }, controleHistoire(item.body).problemes.join(" ") + " Voir le modèle d'histoire (99_Modeles). En attendant, voici son contenu :"), h("div", { html: renderMd(item.body) }));
     const nav = steps.length > 1 ? h("div", { class: "row", style: "gap:10px" },
       h("button", { class: "btn grow", disabled: s.step === 0, onclick: () => { s.step--; save(); draw(); window.scrollTo(0, 0); } }, icon("back", 22), "Précédente"),
       h("button", { class: "btn grow", disabled: s.step >= steps.length - 1, onclick: () => { s.step++; save(); draw(); window.scrollTo(0, 0); } }, "Suivante", icon("next", 22))) : null;

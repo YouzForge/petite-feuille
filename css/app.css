@@ -8,7 +8,7 @@
 :root{
   --ink:#3A2618; --cream:#F4E8D3; --card:#FFF8EA; --shadow:#C9A06F;
   --red:#C23B2E; --red-d:#8E2A20; --teal:#1F6F5E; --teal-d:#144A3F;
-  --yellow:#F2B63D; --muted:#6B4E37; --blue:#2F5FA8; --purple:#6B3FA0; --dash:#B8956A;
+  --yellow:#F2B63D; --muted:#6B4E37; --blue:#2F5FA8; --purple:#6B3FA0; --dash:#B8956A; --leather:#9A5B2B;
   --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -112,7 +112,7 @@ textarea.field{min-height:140px;resize:vertical}
 .statecard{gap:12px}
 .statecard .state{display:flex;flex-direction:row;align-items:center;justify-content:space-between}
 .gear{display:flex;flex-wrap:wrap;gap:12px 22px;border-top:3px dashed var(--dash);padding-top:10px}
-.slots{display:flex;gap:8px;margin-top:6px;min-height:48px;align-items:center}
+.slots{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;min-height:48px;align-items:center}
 .slot{border:3px solid var(--ink);border-radius:10px;display:grid;place-items:center;box-shadow:inset 0 -4px 0 rgba(0,0,0,.14)}
 .slot.empty{background:transparent;border:3px dashed var(--dash);box-shadow:none}
 
@@ -209,3 +209,10 @@ a.iconbtn.plus,button.iconbtn.plus{background:var(--teal);box-shadow:0 3px 0 var
 .mlabel{font:600 14px Fredoka;background:rgba(255,248,234,.92);border-radius:10px;padding:0 6px;white-space:nowrap;margin-top:-2px}
 .mpin.home .mlabel{font-size:17px}
 .mapbtns{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:8px}
+
+.tiles .tile:last-child:nth-child(odd){grid-column:1/-1}
+.bourse{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.bourse .big{width:130px;height:130px;border-radius:50%;background:var(--leather);border:4px solid var(--ink);box-shadow:0 6px 0 var(--shadow);display:flex;align-items:center;justify-content:center}
+.bourse .count{font:600 54px/1 "Fredoka",sans-serif}
+.coins{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:320px}
+.coins svg{display:block}

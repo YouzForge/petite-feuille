@@ -58,6 +58,27 @@ export async function journalScreen() {
   };
 }
 
+/* ------------------------------------------------------------------ Ma bourse (mode enfant) : les pièces gagnées, règle 4.10 */
+export async function bourseScreen() {
+  let st = { pieces: 0, stale: false };
+  try { st = await loadHeroState(); } catch (e) { if (e.auth) throw e; }
+  const n = st.pieces || 0;
+  const texte = n === 0 ? "Ma bourse est vide pour l'instant. Je gagnerai des pièces pendant mes aventures."
+    : n === 1 ? "J'ai une pièce dans ma bourse !" : `J'ai ${n} pièces dans ma bourse !`;
+  const coin = () => icon("coin", 44, "var(--ink)", 1.6, "#F2B81C");
+  const shown = Math.min(n, 12);
+  return {
+    title: "Ma bourse", back: "/",
+    node: h("div", { class: "page" }, stale(st.stale),
+      h("div", { class: "bourse" },
+        h("div", { class: "big" }, icon("purse", 78, "#fff", 2)),
+        h("div", { class: "count", role: "status", "aria-label": `${n} pièce${n > 1 ? "s" : ""}` }, String(n)),
+        h("div", { class: "muted" }, n > 1 ? "pièces" : "pièce"),
+        shown ? h("div", { class: "coins" }, Array.from({ length: shown }, coin), n > shown ? h("span", { class: "muted", style: "align-self:center" }, `+ ${n - shown}`) : null) : null,
+        h("button", { class: "btn red block", onclick: () => speak(texte) }, icon("speaker", 26, "#fff"), "Écouter")))
+  };
+}
+
 export async function childObjets() {
   const { items, stale: st } = await loadCollection(COLLECTIONS.objet);
   const used = it => /utilis/i.test(it.etat);

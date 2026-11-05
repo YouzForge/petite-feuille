@@ -23,6 +23,7 @@ const ROUTES = [
   [/^\/$/, () => S.childHome(), "child"],
   [/^\/child\/bientot\/(.+)$/, n => S.soon(dec(n)), "child"],
   [/^\/child\/outils$/, () => S.tools(), "child"],
+  [/^\/child\/bourse$/, () => P.bourseScreen(), "child"],
   [/^\/child\/journal$/, () => P.journalScreen(), "child"],
   [/^\/child\/carte$/, () => P.mapScreen("child"), "child"],
   [/^\/child\/c\/objet$/, () => P.childObjets(), "child"],

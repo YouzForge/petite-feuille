@@ -122,7 +122,7 @@ export async function findHeroFile() {
 
 /** État de l'héroïne (prénom, cœurs, armure, équipement) lu dans sa fiche. */
 export async function loadHeroState() {
-  const empty = { prenom: "", coeurs: 3, armure: 1, equip: [], compagnons: [], stale: false, found: false, file: null };
+  const empty = { prenom: "", coeurs: 3, armure: 1, pieces: 0, equip: [], compagnons: [], stale: false, found: false, file: null };
   const file = await findHeroFile();
   if (!file) return empty;
   const r = await readText(file);
@@ -131,6 +131,9 @@ export async function loadHeroState() {
   let coeurs = intOf(d.meta.coeurs), armure = intOf(d.meta.armure);
   if (coeurs == null) { const m = r.text.match(/Cœurs\*\*\s*\|[^\n]*?\((\d+)\)/); coeurs = m ? Number(m[1]) : 3; }
   if (armure == null) { const m = r.text.match(/Armure\*\*\s*\|[^\n]*?(\d+)/); armure = m ? Number(m[1]) : 1; }
+  // pièces (règle 4.10) : champ « pieces: 2 », section « ## Pièces » dont la 1re ligne commence par le nombre, ou ligne de tableau « **Pièces** | 2 »
+  let pieces = intOf(d.meta.pieces);
+  if (pieces == null) { const m = r.text.match(/^## Pi[èe]ces?\s*\n+\s*(?:[-*]\s*)?(?:\*\*)?\s*(\d+)/m) || r.text.match(/Pi[èe]ces?\*\*\s*\|\s*(\d+)/); pieces = m ? Number(m[1]) : 0; }
   const nom = String(d.meta.nom || (r.text.match(/\*\*Nom\s*:?\s*\*\*\s*:?\s*([^\n|]+)/) || r.text.match(/\*\*Nom\*\*\s*\|\s*([^|\n]+)/) || [, ""])[1] || "").trim();
   const prenom = nom.split(/[,\s—–-]/)[0] || "";
   try { if (prenom) localStorage.setItem("pf:prenom", prenom); } catch { /* ok */ }
@@ -144,5 +147,5 @@ export async function loadHeroState() {
   }
   let compagnons = [];
   try { const ls = await listDir("03_Personnages/Compagnons"); compagnons = ls.data.filter(f => !f.dir && /\.md$/i.test(f.name) && !/^(00_|LISEZMOI)/i.test(f.name)).map(f => humanize(f.name)); } catch { /* pas de dossier : aucun compagnon */ }
-  return { prenom, coeurs, armure, equip, compagnons, stale: r.stale, found: true, file };
+  return { prenom, coeurs, armure, pieces, equip, compagnons, stale: r.stale, found: true, file };
 }

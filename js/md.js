@@ -51,12 +51,15 @@ export function humanize(file) {
 
 const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const objSvg = o => `<svg class="obj" width="20" height="20" viewBox="0 0 24 24" fill="${o.couleur}" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="${o.nom}"><g stroke="#3A2618" stroke-width="4.2">${ICONS[o.icone]}</g><g stroke="${o.couleur}" stroke-width="2.2">${ICONS[o.icone]}</g></svg>`;
-function inline(s) {
+export function inline(s) {
   return emojiToIcon(esc(s), objSvg)
     .replace(/`([^`]+)`/g, "<code>$1</code>")
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/(^|[\s(])\*([^*\s][^*]*)\*/g, "$1<em>$2</em>");
 }
+
+/** Gras, italique et code d'une ligne, en HTML sûr (pour les puces du mode Jouer). */
+export const inlineMd = inline;
 
 /** Markdown → HTML sûr (tout est échappé). Gère titres, listes, tableaux, citations, séparateurs. */
 export function renderMd(body, { dropTitle = true } = {}) {
@@ -124,12 +127,16 @@ export function sections(body) {
   });
 }
 
+/** Titre de la section des étapes : « Étapes de jeu », avec ou sans remarque entre parenthèses (« Étapes de jeu (lues par le mode Jouer…) »). */
+export const isStepsTitle = t => /^[ée]tapes?(\s+de\s+jeu)?(\s*[(:\-–—].*)?\s*$/i.test((t || "").trim());
+
 /**
  * Étapes de jeu d'une histoire : section « ## Étapes de jeu », une « ### Étape N — Titre » par étape.
- * Chaque étape : lignes « - **Libellé :** texte » suivies de sous-puces. → [{title, fields:[{label, text, items[]}]}]
+ * Chaque étape : lignes « - **Libellé :** texte » suivies de sous-puces. Une ligne libre (remarque en italique, par ex.
+ * « *(Seulement pour la fin B.)* ») est gardée comme note. → [{title, fields:[{label, text, items[], note?}]}]
  */
 export function parseSteps(body) {
-  const sec = sections(body).find(s => /^[ée]tapes?( de jeu)?\s*$/i.test(s.title));
+  const sec = sections(body).find(s => isStepsTitle(s.title));
   if (!sec) return [];
   return sec.text.split(/\n(?=### )/).filter(t => /^### /.test(t)).map(t => {
     const lines = t.split("\n");
@@ -141,6 +148,13 @@ export function parseSteps(body) {
       const sub = raw.match(/^\s{2,}[-*]\s+(.*)$/);
       if (top) fields.push({ label: top[1].trim(), text: top[2].trim(), items: [] });
       else if (sub && fields.length) fields[fields.length - 1].items.push(sub[1].trim());
+      else if (/^\s{2,}\S/.test(raw) && fields.length) {          // suite d'une ligne qui passe à la ligne
+        const f = fields[fields.length - 1];
+        if (f.items.length) f.items[f.items.length - 1] += " " + raw.trim(); else f.text = (f.text + " " + raw.trim()).trim();
+      } else {
+        const note = raw.trim().replace(/^[*_]+|[*_]+$/g, "").trim();
+        if (note) fields.push({ label: "", text: note, items: [], note: true });
+      }
     }
     return { title, fields };
   });
@@ -148,7 +162,7 @@ export function parseSteps(body) {
 
 /** Sections « ### 4.x » du fichier de règles, pour l'aide « Règles en bref » (une seule source : le fichier maître). */
 export function ruleSections(text, wanted) {
-  return text.split(/\n(?=### )/).filter(p => wanted.some(w => p.startsWith("### " + w)));
+  return text.split(/\n(?=### )/).filter(p => wanted.some(w => p.startsWith("### " + w + " ") || p === "### " + w));
 }
 
 /* ------------------------------------------------------------------ écriture (formulaires de fiches) */
