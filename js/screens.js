@@ -276,18 +276,19 @@ export function folderSetupScreen(onDone) {
 
   /* vue « Partagés avec moi » */
   const showShared = async (back) => {
-    if (!isWide()) {
+    draw(TITLE, spinner("…"));
+    let nodes = [], e1 = null;
+    try { nodes = await listFolderNodes({ shared: true }); } catch (e) { e1 = e; }
+    // Essai fait avec l'autorisation de base (testé : suffit pour un compte personnel). Si Microsoft la refuse, on propose l'accès élargi.
+    if (e1 && err403(e1) && !isWide()) {
       draw(TITLE,
         h("div", { class: "card" },
           h("h3", null, "Le dossier est partagé par quelqu'un d'autre"),
-          h("div", { class: "muted" }, "Pour le retrouver, Microsoft doit te demander une autorisation en plus (accès aux fichiers partagés avec toi). Il te la demande une seule fois, sur ce téléphone. Tu reviendras ici ensuite.")),
+          h("div", { class: "muted" }, "Microsoft n'a pas montré les dossiers partagés avec l'autorisation actuelle. Il faut en demander une de plus, une seule fois, sur ce téléphone. Tu reviendras ici ensuite.")),
         h("button", { class: "btn primary block", onclick: () => enableWideAccess() }, icon("lock", 22, "#fff"), "Autoriser l'accès aux dossiers partagés"),
         h("button", { class: "btn block", onclick: back }, icon("back", 22), "Retour"));
       return;
     }
-    draw(TITLE, spinner("…"));
-    let nodes = [], e1 = null;
-    try { nodes = await listFolderNodes({ shared: true }); } catch (e) { e1 = e; }
     const linkEl = h("input", { class: "field", type: "url", placeholder: "Coller ici le lien de partage du dossier" });
     const msg = h("div", { class: "ko", style: "display:none" });
     const fail = t => { msg.textContent = t; msg.style.display = ""; };
