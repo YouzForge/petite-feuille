@@ -266,13 +266,34 @@ export async function heroineView() {
 }
 
 /** Dossier du projet introuvable automatiquement : on le choisit en touchant les dossiers (aucune saisie).
-    Trois endroits possibles : Mes fichiers, les dossiers partagés par quelqu'un d'autre (liste « Partagés avec moi » ou lien collé). */
+    Trois endroits possibles : Mes fichiers, les dossiers partagés par quelqu'un d'autre (lien de partage collé, ou liste « Partagés avec moi » tant que Microsoft la fournit). */
 export function folderSetupScreen(onDone) {
   const box = h("div", { class: "page", style: "padding-top:40px" });
   const draw = (...kids) => box.replaceChildren(...kids.flat().filter(k => k != null && k !== false));   // (replaceChildren écrirait « null »)
   const TITLE = h("h2", null, "Choisis le dossier du projet");
   const save = node => { if (node.driveId) setFolderRemote(node.driveId, node.itemId); else setFolderPath(node.path); onDone(); };
   const err403 = e => e && (e.status === 403 || e.status === 401);
+
+  /* lien de partage collé : chemin principal pour un dossier partagé par quelqu'un d'autre (la liste « Partagés avec moi » de Microsoft s'arrête en novembre 2026) */
+  const linkBlock = back => {
+    const linkEl = h("input", { class: "field", type: "url", placeholder: "Coller ici le lien de partage du dossier" });
+    const msg = h("div", { class: "ko", style: "display:none" });
+    const wide = h("button", { class: "btn block", style: "display:none", onclick: () => enableWideAccess() }, icon("lock", 22), "Autoriser l'accès élargi (une fois, sur ce téléphone)");
+    const fail = (t, offerWide) => { msg.textContent = t; msg.style.display = ""; wide.style.display = offerWide && !isWide() ? "" : "none"; };
+    const tryLink = async () => {
+      msg.style.display = "none"; wide.style.display = "none";
+      try {
+        const n = await resolveShareLink(linkEl.value);
+        if (!(await isProjectFolder(n))) { fail("Ce dossier ne contient pas le fichier 00_REGLES_PROJET.md : ce n'est pas le dossier du jeu. Ouvre-le et touche le bon sous-dossier."); showFolder(n, [], back); return; }
+        save(n);
+      } catch (e) { fail(err403(e) ? "Microsoft refuse l'accès à ce lien : le dossier est-il bien partagé avec ton compte ? Si oui, il faut peut-être une autorisation de plus (bouton ci-dessous)." : (e.status === 404 ? "Lien introuvable." : (e.message || "Lien non reconnu.")), err403(e)); }
+    };
+    return [
+      h("div", { class: "kicker" }, "Le dossier t'a été partagé par quelqu'un ?"),
+      h("div", { class: "muted" }, "Colle ici le lien de partage reçu (une seule fois sur ce téléphone)."),
+      linkEl, msg, wide,
+      h("button", { class: "btn primary block", onclick: tryLink }, "Utiliser ce lien")];
+  };
 
   /* vue « Partagés avec moi » */
   const showShared = async (back) => {
@@ -289,24 +310,11 @@ export function folderSetupScreen(onDone) {
         h("button", { class: "btn block", onclick: back }, icon("back", 22), "Retour"));
       return;
     }
-    const linkEl = h("input", { class: "field", type: "url", placeholder: "Coller ici le lien de partage du dossier" });
-    const msg = h("div", { class: "ko", style: "display:none" });
-    const fail = t => { msg.textContent = t; msg.style.display = ""; };
-    const tryLink = async () => {
-      msg.style.display = "none";
-      try {
-        const n = await resolveShareLink(linkEl.value);
-        if (!(await isProjectFolder(n))) { fail("Ce dossier ne contient pas le fichier 00_REGLES_PROJET.md : ce n'est pas le dossier du jeu. Ouvre-le et touche le bon sous-dossier."); showFolder(n, [], back); return; }
-        save(n);
-      } catch (e) { fail(err403(e) ? "Microsoft refuse l'accès à ce lien : le dossier est-il bien partagé avec ton compte ?" : (e.status === 404 ? "Lien introuvable." : (e.message || "Lien non reconnu."))); }
-    };
     draw(TITLE,
       h("div", { class: "muted" }, "Dossiers que quelqu'un a partagés avec toi. Touche celui du jeu."),
       e1 ? h("div", { class: "ko" }, err403(e1) ? "Microsoft n'a pas donné l'accès aux dossiers partagés. Touche « Défaire l'autorisation » ci-dessous puis recommence." : "Impossible de lire la liste des dossiers partagés.") : null,
       h("div", { class: "list" }, nodes.length || e1 ? nodes.map(n => card(n.name, () => showFolder(n, [], () => showShared(back)))) : [h("div", { class: "muted" }, "Rien de partagé n'apparaît dans cette liste. Colle le lien de partage ci-dessous.")]),
-      h("div", { class: "kicker" }, "Ou avec le lien de partage"),
-      linkEl, msg,
-      h("button", { class: "btn primary block", onclick: tryLink }, "Utiliser ce lien"),
+      linkBlock(back),
       h("button", { class: "btn block", onclick: back }, icon("back", 22), "Retour"),
       e1 ? h("button", { class: "btn block", onclick: () => { disableWideAccess(); showRoot(); } }, "Défaire l'autorisation") : null);
   };
@@ -336,8 +344,9 @@ export function folderSetupScreen(onDone) {
     try { nodes = await listFolderNodes({ path: "" }); } catch (e) { err = e; }
     draw(TITLE,
       h("div", { class: "muted" }, "Touche les dossiers jusqu'à celui du jeu (il contient le fichier 00_REGLES_PROJET.md). Une seule fois sur ce téléphone."),
-      h("div", { class: "kicker" }, "OneDrive"),
-      card("Partagés avec moi", () => showShared(showRoot), "lock"),
+      linkBlock(showRoot),
+      h("div", { class: "kicker" }, "Ou parmi tes dossiers OneDrive"),
+      card("Partagés avec moi (liste Microsoft, bientôt supprimée)", () => showShared(showRoot), "lock"),
       err ? h("div", { class: "ko" }, "Impossible de lire ce dossier.") : null,
       h("div", { class: "list" }, nodes.map(n => card(n.name, () => showFolder(n, [], showRoot)))));
   };
