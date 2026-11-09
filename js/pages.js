@@ -484,7 +484,7 @@ export async function notesPanel(notesFile, onSaved) {
     const note = field.value.trim(); if (!note) { msg.className = "ko"; msg.textContent = "Écris d'abord quelque chose."; return; }
     btn.disabled = true; msg.className = "muted"; msg.textContent = "Enregistrement…";
     try {
-      const fresh = await readText(notesFile);                  // on relit juste avant d'écrire
+      const fresh = await readText(notesFile, { fresh: true });                  // on relit juste avant d'écrire
       if (fresh.stale) throw new Error("Pas de réseau : rien n'a été enregistré.");
       const d = new Date(), p = n => String(n).padStart(2, "0");
       const when = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;

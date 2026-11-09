@@ -237,7 +237,7 @@ export async function jouerScreen(file) {
     const phrase = h("button", { class: "btn primary block", style: "font-size:20px;padding:16px", onclick: () => notePhrase() }, icon("mic", 26, "#fff"), `Noter une phrase de ${heroName()}` + (s.phrases.length ? ` (${s.phrases.length})` : ""));
     const finish = h("button", { class: "btn block", style: "background:var(--ink);color:#fff;font-size:20px;padding:16px", onclick: () => { save(); go("/mj/recap"); } }, "Terminer et faire le récap", icon("next", 24, "#fff"));
     const quit = h("a", { class: "muted center", href: "#/mj/ce-soir", style: "font-size:15px;text-decoration:underline" }, "Quitter sans terminer (la partie est gardée)");
-    root.replaceChildren(head, bars, stepNode, nav, state, phrase, finish, quit);
+    root.replaceChildren(...[head, bars, stepNode, nav, state, phrase, finish, quit].filter(Boolean));   // (replaceChildren écrirait « null »)
   };
 
   const ask = () => {

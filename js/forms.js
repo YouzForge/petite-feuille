@@ -64,7 +64,7 @@ const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 export async function updateItem(colId, file, mutate) {
   const col = COLLECTIONS[colId];
   const rel = `${col.folder}/${file}`;
-  const fresh = await readText(rel);
+  const fresh = await readText(rel, { fresh: true });
   if (fresh.stale || fresh.text == null) throw new Error("Pas de réseau : rien n'a été enregistré.");
   const d = parseDoc(fresh.text);
   let meta = { ...d.meta };
@@ -82,7 +82,7 @@ export async function formScreen(colId, file) {
   const fields = fieldsOf(colId);
   let meta = {}, body = "", name = "";
   if (file) {
-    const r = await readText(`${col.folder}/${file}`);
+    const r = await readText(`${col.folder}/${file}`, { fresh: true });
     if (r.text == null) throw new Error("Fiche introuvable : " + file);
     const it = toItem(col, file, r.text);
     meta = it.meta; body = it.body; name = it.name;
@@ -149,7 +149,7 @@ export async function formScreen(colId, file) {
       if (file) {
         await updateItem(colId, file, (m, b) => { const nm = { ...m, ...p }; if (colId === "compagnon") delete nm.pouvoir; return { meta: nm, body: setSection(b, "Note rapide", note) }; });
       } else {
-        const ls = await listDir(col.folder);
+        const ls = await listDir(col.folder, { fresh: true });
         if (ls.stale) throw new Error("Pas de réseau : rien n'a été enregistré.");
         const taken = new Set(ls.data.map(x => x.name.toLowerCase()));
         let base = cap(slug(p.nom)), n = 1;

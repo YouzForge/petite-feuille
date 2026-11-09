@@ -113,4 +113,4 @@ export function autoLogin() {
   login();
   return true;
 }
-export async function logout() { try { localStorage.removeItem("pf_lastUser"); } catch { /* rien */ } if (app && account) await app.logoutRedirect({ account }); }
+export async function logout() { try { localStorage.removeItem("pf_lastUser"); for (const k of Object.keys(localStorage)) if (/^pf1:(ls|tx|sg):/.test(k)) localStorage.removeItem(k); } catch { /* rien */ } if (app && account) await app.logoutRedirect({ account }); }
