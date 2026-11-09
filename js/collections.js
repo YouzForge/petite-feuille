@@ -36,12 +36,12 @@ export const COLLECTIONS = {
   },
   prochaine: {
     id: "prochaine", label: "Histoires en attente", icon: "book",
-    folder: "02_Campagne/Prochaines", exclude: /^(00_|LISEZMOI)/i,
+    folder: "02_Campagne/Prochaines", exclude: /^(00_|LISEZMOI)/i, byNumero: true,
     empty: "Aucune histoire n'est encore préparée."
   },
   histoire: {
     id: "histoire", label: "Histoires jouées", icon: "book",
-    folder: "01_Histoires_Jouees", exclude: /^(00_|LISEZMOI|Recap_)/i,
+    folder: "01_Histoires_Jouees", exclude: /^(00_|LISEZMOI|Recap_)/i, byNumero: true,
     empty: "Aucune histoire jouée pour l'instant."
   }
 };
@@ -82,6 +82,10 @@ export function parsePouvoirs(v) {
   return String(v == null ? "" : v).split(/\s*[;\n]\s*/).map(x => x.trim()).filter(Boolean);
 }
 
+/** Ordre de jeu des histoires : champ « numero » de l'en-tête, sinon le numéro au début du nom de fichier, sinon à la fin (puis par nom). */
+const numeroOf = it => { const n = intOf(it.meta.numero); if (n != null) return n; const m = it.file.match(/^(\d+)_/); return m ? Number(m[1]) : Infinity; };
+export const byNumero = (a, b) => { const x = numeroOf(a), y = numeroOf(b); return x === y ? a.file.localeCompare(b.file, "fr") : x - y; };
+
 /** Charge tous les éléments d'une collection. → { items, stale } */
 export async function loadCollection(col) {
   const ls = await listDir(col.folder);
@@ -93,6 +97,7 @@ export async function loadCollection(col) {
     if (r.stale) stale = true;
     return r.text == null ? null : toItem(col, f.name, r.text);
   })).filter(Boolean);
+  if (col.byNumero) items.sort(byNumero);
   return { items, stale };
 }
 

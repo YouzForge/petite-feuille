@@ -132,7 +132,7 @@ export function speak(text) {
 
 /** Case d'inventaire (à la Minecraft) : fond de la couleur de l'objet, icône par-dessus. */
 export function objSlot(o, size = 48) {
-  const s = h("div", { class: "slot", style: `width:${size}px;height:${size}px;background:${o.couleur}`, role: "img", "aria-label": o.nom, title: o.nom });
+  const s = h("div", { class: "slot", style: `width:${size}px;height:${size}px;background:${o.couleur}${o.rim ? `;box-shadow:inset 0 0 0 ${Math.max(3, Math.round(size / 12))}px ${o.rim}` : ""}`, role: "img", "aria-label": o.nom, title: o.nom });
   s.append(icon(o.icone, size * 0.56, inkOn(o.couleur), 2.4));
   return s;
 }

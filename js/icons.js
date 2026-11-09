@@ -9,6 +9,7 @@ export const ICONS = {
  "bag": "<path d=\"M6 8h12l1 12H5z\"/><path d=\"M9 8V6a3 3 0 0 1 6 0v2\"/>",
  "book": "<path d=\"M4 5.5C4 4.7 4.7 4 5.5 4H11v15H5.5C4.7 19 4 18.3 4 17.5z\"/><path d=\"M20 5.5C20 4.7 19.3 4 18.5 4H13v15h5.5c.8 0 1.5-.7 1.5-1.5z\"/>",
  "sword": "<path d=\"M20 4L10 14\"/><path d=\"M7 13l4 4\"/><path d=\"M7 17l-3 3\"/>",
+ "buckler": "<circle cx=\"12\" cy=\"12\" r=\"8.5\"/><circle cx=\"12\" cy=\"12\" r=\"5.2\"/><circle cx=\"12\" cy=\"12\" r=\"1.5\"/>",
  "helmet": "<path d=\"M5 16a7 7 0 0 1 14 0v2H5z\"/><path d=\"M12 9v4\"/>",
  "potion": "<path d=\"M10 3h4\"/><path d=\"M11 3v5l-4.5 8A3 3 0 0 0 9 20h6a3 3 0 0 0 2.5-4L13 8V3\"/><path d=\"M8.5 14h7\"/>",
  "pin": "<path d=\"M12 21s-6-5.4-6-10a6 6 0 0 1 12 0c0 4.6-6 10-6 10z\"/><circle cx=\"12\" cy=\"11\" r=\"2.2\"/>",

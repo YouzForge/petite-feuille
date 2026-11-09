@@ -19,12 +19,12 @@ const sbtn = text => h("button", { class: "sbtn", "aria-label": "Écouter", oncl
 /** Apparence d'un objet : couleur et icône du registre (R18), sinon selon son type. */
 function objetLook(it) {
   const o = findObjet(it.name);
-  if (o) return { color: o.couleur, ic: o.icone, ink: inkOn(o.couleur) };
+  if (o) return { color: o.couleur, ic: o.icone, ink: inkOn(o.couleur), rim: o.rim };
   const t = flat(it.meta.categorie);
   const ic = /arme/.test(t) ? "sword" : /armure/.test(t) ? "helmet" : /soin|potion/.test(t) ? "potion" : /souvenir|lettre|carte/.test(t) ? "note" : "star";
   return { color: "#2F7F6F", ic, ink: "#FFFFFF" };
 }
-const bigIcon = (look, size = 62) => { const d = h("div", { class: "disc", style: `background:${look.color};width:${size}px;height:${size}px;border:3px solid var(--ink);flex:none` }); d.append(icon(look.ic, size * 0.5, look.ink, 2.2)); return d; };
+const bigIcon = (look, size = 62) => { const d = h("div", { class: "disc", style: `background:${look.color};width:${size}px;height:${size}px;border:3px solid var(--ink);flex:none${look.rim ? `;box-shadow:inset 0 0 0 ${Math.round(size / 11)}px ${look.rim}` : ""}` }); d.append(icon(look.ic, size * 0.5, look.ink, 2.2)); return d; };
 const dashedCard = (ic, text) => h("div", { class: "card dashed" }, h("div", { class: "row" }, h("div", { class: "disc", style: "width:62px;height:62px;border:3px dashed var(--dash);flex:none" }, icon(ic, 30, "var(--dash)", 2)), h("div", { class: "grow muted", style: "font-size:19px" }, text)));
 
 /* ================================================================== MODE ENFANT */
