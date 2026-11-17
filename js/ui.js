@@ -1,6 +1,6 @@
 // Petites briques d'interface partagées (le « kit » côté code).
 import { ICONS } from "./icons.js";
-import { inkOn } from "./colors.js";
+import { inkOn, pouvoirLook } from "./colors.js";
 
 const SVGNS = "http://www.w3.org/2000/svg";
 
@@ -134,6 +134,14 @@ export function speak(text) {
 export function objSlot(o, size = 48) {
   const s = h("div", { class: "slot", style: `width:${size}px;height:${size}px;background:${o.couleur}${o.rim ? `;box-shadow:inset 0 0 0 ${Math.max(3, Math.round(size / 12))}px ${o.rim}` : ""}`, role: "img", "aria-label": o.nom, title: o.nom });
   s.append(icon(o.icone, size * 0.56, inkOn(o.couleur), 2.4));
+  return s;
+}
+
+/** Case ronde d'un pouvoir : couleur et icône du pouvoir (même apparence que « Mes pouvoirs »). */
+export function powerSlot(p, size = 48) {
+  const look = pouvoirLook(p.nom);
+  const s = h("div", { class: "slot", style: `width:${size}px;height:${size}px;background:${look.color};border-radius:50%`, role: "img", "aria-label": p.nom, title: p.nom });
+  s.append(icon(look.ic, size * 0.54, "#fff", 2.3));
   return s;
 }
 

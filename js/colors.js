@@ -11,6 +11,15 @@ export const OBJETS = {
   lettre_magalie: { nom: "Lettre de Magalie", couleur: "#E8C766", icone: "note", emojis: ["💌"], match: /lettre/i }
 };
 
+/** Icône et couleur d'un pouvoir d'après son nom (inconnu : étoile violette). */
+export function pouvoirLook(nom) {
+  const t = String(nom || "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/œ/g, "oe").toLowerCase();
+  if (/loup|oeil/.test(t)) return { ic: "eye", color: "var(--blue)" };
+  if (/epee|combat/.test(t)) return { ic: "sword", color: "var(--red)" };
+  if (/bouclier|blocage/.test(t)) return { ic: "buckler", color: "var(--leather)" };
+  return { ic: "star", color: "var(--purple)" };
+}
+
 /** Retrouve un objet à partir d'une ligne d'inventaire ("⚔️ Épée", "Casque en fer : porté"). */
 export function findObjet(text) {
   for (const [id, o] of Object.entries(OBJETS)) if (o.match.test(text)) return { id, ...o };

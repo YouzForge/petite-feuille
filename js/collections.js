@@ -126,12 +126,8 @@ export async function findHeroFile() {
 }
 
 /** Pouvoirs de l'héroïne : la liste de la section « ## Pouvoirs » de sa fiche (« 1. **Nom** : effet »). Nom + première phrase de l'effet. */
-export async function loadPouvoirs() {
-  const file = await findHeroFile();
-  if (!file) return { items: [], stale: false, found: false };
-  const r = await readText(file);
-  if (r.text == null) return { items: [], stale: false, found: false };
-  const sec = (r.text.replace(/\r\n/g, "\n").match(/^## Pouvoirs?\s*\n([\s\S]*?)(?=\n## |(?![\s\S]))/m) || [, ""])[1];
+export function parsePouvoirsFiche(text) {
+  const sec = (String(text || "").replace(/\r\n/g, "\n").match(/^## Pouvoirs?\s*\n([\s\S]*?)(?=\n## |(?![\s\S]))/m) || [, ""])[1];
   const items = [];
   for (const line of sec.split("\n")) {
     const m = line.match(/^\s*(?:\d+[.)]|[-*])\s+(?:\*\*(.+?)\*\*\s*:?|([^:*]+?)\s*:)\s*(.*)$/);
@@ -141,12 +137,19 @@ export async function loadPouvoirs() {
     if (effet) effet = effet.charAt(0).toUpperCase() + effet.slice(1);
     if (nom) items.push({ nom, effet });
   }
-  return { items, stale: r.stale, found: true };
+  return items;
+}
+export async function loadPouvoirs() {
+  const file = await findHeroFile();
+  if (!file) return { items: [], stale: false, found: false };
+  const r = await readText(file);
+  if (r.text == null) return { items: [], stale: false, found: false };
+  return { items: parsePouvoirsFiche(r.text), stale: r.stale, found: true };
 }
 
 /** État de l'héroïne (prénom, cœurs, armure, équipement) lu dans sa fiche. */
 export async function loadHeroState() {
-  const empty = { prenom: "", coeurs: 3, armure: 1, pieces: 0, equip: [], compagnons: [], stale: false, found: false, file: null };
+  const empty = { prenom: "", coeurs: 3, armure: 1, pieces: 0, equip: [], pouvoirs: [], compagnons: [], stale: false, found: false, file: null };
   const file = await findHeroFile();
   if (!file) return empty;
   const r = await readText(file);
@@ -171,5 +174,5 @@ export async function loadHeroState() {
   }
   let compagnons = [];
   try { const ls = await listDir("03_Personnages/Compagnons"); compagnons = ls.data.filter(f => !f.dir && /\.md$/i.test(f.name) && !/^(00_|LISEZMOI)/i.test(f.name)).map(f => humanize(f.name)); } catch { /* pas de dossier : aucun compagnon */ }
-  return { prenom, coeurs, armure, pieces, equip, compagnons, stale: r.stale, found: true, file };
+  return { prenom, coeurs, armure, pieces, equip, pouvoirs: parsePouvoirsFiche(r.text), compagnons, stale: r.stale, found: true, file };
 }

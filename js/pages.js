@@ -2,7 +2,7 @@
 // photos à classer, idée du soir, onglet secondaire des fiches (mode MJ).
 import { h, icon, hearts, disc, speak } from "./ui.js";
 import { COLLECTIONS, loadCollection, loadHeroState, loadPouvoirs, heroName } from "./collections.js";
-import { findObjet, inkOn } from "./colors.js";
+import { findObjet, inkOn, pouvoirLook } from "./colors.js";
 import { readText, writeText, listDir, pool } from "./graph.js";
 import { renderMd, plain, parseDoc, sections } from "./md.js";
 import { photoBox, photoControl } from "./photo.js";
@@ -81,14 +81,6 @@ export async function bourseScreen() {
 }
 
 /* ------------------------------------------------------------------ Mes pouvoirs (mode enfant) : lus dans « ## Pouvoirs » de sa fiche, règle 4.3 */
-/** Icône et couleur d'un pouvoir selon son nom (inconnu : étoile violette). */
-function pouvoirLook(nom) {
-  const t = flat(nom);
-  if (/loup|oeil/.test(t)) return { ic: "eye", color: "var(--blue)" };
-  if (/epee|combat/.test(t)) return { ic: "sword", color: "var(--red)" };
-  if (/bouclier|blocage/.test(t)) return { ic: "buckler", color: "var(--leather)" };
-  return { ic: "star", color: "var(--purple)" };
-}
 export async function pouvoirsScreen() {
   let r = { items: [], stale: false };
   try { r = await loadPouvoirs(); } catch (e) { if (e.auth) throw e; }

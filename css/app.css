@@ -116,6 +116,7 @@ textarea.field{min-height:140px;resize:vertical}
 .statecard{gap:12px}
 .statecard .state{display:flex;flex-direction:row;align-items:center;justify-content:space-between}
 .gear{display:flex;flex-wrap:wrap;gap:12px 22px;border-top:3px dashed var(--dash);padding-top:10px}
+.gear-powers{flex-basis:100%;text-decoration:none;color:inherit;display:block}
 .slots{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;min-height:48px;align-items:center}
 .slot{border:3px solid var(--ink);border-radius:10px;display:grid;place-items:center;box-shadow:inset 0 -4px 0 rgba(0,0,0,.14)}
 .slot.empty{background:transparent;border:3px dashed var(--dash);box-shadow:none}

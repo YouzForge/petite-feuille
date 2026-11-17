@@ -1,5 +1,5 @@
 // Tous les écrans. Chaque écran renvoie { title, back, nav, node } ; le routeur (main.js) les affiche.
-import { h, icon, hearts, disc, spinner, longPress, ringBadge, speak, objSlot, emptySlot } from "./ui.js";
+import { h, icon, hearts, disc, spinner, longPress, ringBadge, speak, objSlot, emptySlot, powerSlot } from "./ui.js";
 import { COLLECTIONS, loadCollection, loadItem, loadHeroState, childView } from "./collections.js";
 import { readText, writeText, setFolderPath, setFolderRemote, listFolderNodes, isProjectFolder, resolveShareLink } from "./graph.js";
 import { renderMd, plain, parseDoc } from "./md.js";
@@ -50,6 +50,7 @@ export function reconnectScreen() {
 
 /** Carte d'état de l'héroïne : cœurs, armure, équipement porté et place pour les compagnons. */
 function stateCard(st, big = true) {
+  const pouvoirs = st.pouvoirs || [];
   const companions = st.compagnons || [];                       // pas encore de collection « compagnons » : cases réservées
   const slots = companions.length
     ? companions.slice(0, 6).map(n => { const sl = h("div", { class: "slot", style: "width:48px;height:48px;background:var(--teal)", role: "img", "aria-label": n, title: n }); sl.append(icon("paw", 27, "#fff", 2.2)); return sl; })
@@ -60,7 +61,8 @@ function stateCard(st, big = true) {
       h("div", { class: "row", style: "gap:8px" }, icon("shield", big ? 34 : 28, "var(--ink)", 1.6, "#A9BDD1"), h("h2", null, String(st.armure)))),
     h("div", { class: "gear" },
       h("div", null, h("div", { class: "kicker" }, "Équipement"), h("div", { class: "slots" }, st.equip && st.equip.length ? st.equip.map(o => objSlot(o)) : h("span", { class: "muted", style: "font-size:14px" }, "Rien pour l'instant"))),
-      h("div", null, h("div", { class: "kicker" }, "Compagnons"), h("div", { class: "slots" }, slots))));
+      h("div", null, h("div", { class: "kicker" }, "Compagnons"), h("div", { class: "slots" }, slots)),
+      pouvoirs.length ? (big ? link : (_p, _c, ...k) => h("div", null, ...k))("/child/pouvoirs", "gear-powers", h("div", { class: "kicker" }, "Pouvoirs"), h("div", { class: "slots" }, pouvoirs.map(p => powerSlot(p)))) : null));
 }
 
 /* ------------------------------------------------------------------ mode enfant */
