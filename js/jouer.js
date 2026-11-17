@@ -164,7 +164,7 @@ export async function jouerScreen(file) {
   if (!s || s.file !== file) {
     let st = { coeurs: 3, armure: 1 };
     try { st = await loadHeroState(); } catch (e) { if (e.auth) throw e; }
-    s = { file, titre: item.name, step: 0, coeurs: st.coeurs, armure: st.armure, coeurs0: st.coeurs, coeursMax: st.coeurs, armure0: st.armure, potions: [], bus: [], ajoutees: [], etapes: steps.map(x => x.title), phrases: [], jets: [], started: Date.now() };
+    s = { file, titre: item.story ? item.story.titre : item.name, step: 0, coeurs: st.coeurs, armure: st.armure, coeurs0: st.coeurs, coeursMax: st.coeurs, armure0: st.armure, potions: [], bus: [], ajoutees: [], etapes: steps.map(x => x.title), phrases: [], jets: [], started: Date.now() };
     saveSession(s);
   }
   const save = () => saveSession(s);

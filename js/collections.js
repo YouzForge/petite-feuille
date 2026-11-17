@@ -59,13 +59,25 @@ export function typeCompagnon(meta) {
   return "terre";
 }
 
+/** Forme unique d'une histoire (listes, fiches, « Ce soir ») : « NN — Titre » et un état sans emoji ("jouée"), quel que soit le format du fichier
+    (ancien « # 01 — Titre » + « - **Statut :** ✅ jouée », ou en-tête de champs titre/numero/statut). Le numéro est numeroOf (champ numero, sinon préfixe du fichier). */
+export function storyForm(file, meta, rawName) {
+  const n = numeroOf({ meta, file });
+  const titre = String(meta.titre || rawName || humanize(file)).replace(/^\s*\d+\s*[—–:.-]\s*/, "").trim() || humanize(file);
+  const statut = String(meta.statut || "").replace(/[^\p{L}\p{N}\s'’-]/gu, "").replace(/\s+/g, " ").trim().toLowerCase();
+  return { numero: Number.isFinite(n) ? n : null, titre, statut, jouee: /^jou[ée]e?$/.test(statut) };
+}
+const pad2 = n => String(n).padStart(2, "0");
+
 /** Un élément de collection, prêt à afficher. */
 export function toItem(col, file, text) {
   const d = parseDoc(text);
   const photo = typeof d.meta.photo === "string" && /\.(jpe?g|png|webp|heic)$/i.test(d.meta.photo) ? d.meta.photo : null;
+  let name = String(d.meta.nom || d.meta.titre || d.title || humanize(file)), story = null;
+  if (col.byNumero) { story = storyForm(file, d.meta, name); name = story.numero != null ? `${pad2(story.numero)} — ${story.titre}` : story.titre; }
   return {
     col: col.id, file, rel: `${col.folder}/${file}`,
-    name: String(d.meta.nom || d.meta.titre || d.title || humanize(file)),
+    name, story,
     meta: d.meta, body: d.body,
     coeurs: intOf(d.meta.coeurs), boss: isTrue(d.meta.boss), photo,
     apparence: String(d.meta.apparence || "").trim(),
