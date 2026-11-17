@@ -131,7 +131,7 @@ function stepCard(step, onAsk, fin, onFin) {
     } else if ((v = parseVoie(f.label))) {
       nbVoies++;
       const pill = v.verrou ? "Pas encore" + (v.pouvoir ? " · " + v.pouvoir : "")
-        : v.pouvoir ? v.pouvoir + (/loup|[ée]p[ée]e|combat|pouvoir/i.test(v.pouvoir) ? " · 2d6" : "")
+        : v.pouvoir ? v.pouvoir + (/loup|[ée]p[ée]e|combat|bouclier|blocage|pouvoir/i.test(v.pouvoir) ? " · 2d6" : "")
         : "Automatique";
       kids.push(h("div", { class: "voie vt-" + v.type.cle + (v.verrou ? " verrou" : "") },
         h("div", { class: "voie-head" },

@@ -1,7 +1,7 @@
 // Pages des collections et du monde : journal, objets, lieux, carte, compagnons (mode enfant) ; lieux et objets, compagnons,
 // photos à classer, idée du soir, onglet secondaire des fiches (mode MJ).
 import { h, icon, hearts, disc, speak } from "./ui.js";
-import { COLLECTIONS, loadCollection, loadHeroState, heroName } from "./collections.js";
+import { COLLECTIONS, loadCollection, loadHeroState, loadPouvoirs, heroName } from "./collections.js";
 import { findObjet, inkOn } from "./colors.js";
 import { readText, writeText, listDir, pool } from "./graph.js";
 import { renderMd, plain, parseDoc, sections } from "./md.js";
@@ -78,6 +78,33 @@ export async function bourseScreen() {
         shown ? h("div", { class: "coins" }, Array.from({ length: shown }, coin), n > shown ? h("span", { class: "muted", style: "align-self:center" }, `+ ${n - shown}`) : null) : null,
         h("button", { class: "btn red block", onclick: () => speak(texte) }, icon("speaker", 26, "#fff"), "Écouter")))
   };
+}
+
+/* ------------------------------------------------------------------ Mes pouvoirs (mode enfant) : lus dans « ## Pouvoirs » de sa fiche, règle 4.3 */
+/** Icône et couleur d'un pouvoir selon son nom (inconnu : étoile violette). */
+function pouvoirLook(nom) {
+  const t = flat(nom);
+  if (/loup|oeil/.test(t)) return { ic: "eye", color: "var(--blue)" };
+  if (/epee|combat/.test(t)) return { ic: "sword", color: "var(--red)" };
+  if (/bouclier|blocage/.test(t)) return { ic: "buckler", color: "var(--leather)" };
+  return { ic: "star", color: "var(--purple)" };
+}
+export async function pouvoirsScreen() {
+  let r = { items: [], stale: false };
+  try { r = await loadPouvoirs(); } catch (e) { if (e.auth) throw e; }
+  const nodes = [stale(r.stale)];
+  for (const p of r.items) {
+    const look = pouvoirLook(p.nom), say = [p.nom, p.effet].filter(Boolean).join(". ");
+    const d = h("div", { class: "disc", style: `background:${look.color};width:62px;height:62px;border:3px solid var(--ink);flex:none` });
+    d.append(icon(look.ic, 31, "#fff", 2.2));
+    nodes.push(h("button", { class: "card bigcard", onclick: () => speak(say) },
+      h("div", { class: "row" }, d,
+        h("div", { class: "grow" }, h("h2", null, p.nom), p.effet ? h("div", { class: "muted", style: "font-size:19px" }, p.effet) : null),
+        sbtn(say))));
+  }
+  if (!r.items.length) nodes.push(h("div", { class: "muted center" }, "Mes pouvoirs apparaîtront ici."));
+  nodes.push(dashedCard("question", "Un futur pouvoir"));
+  return { title: "Mes pouvoirs", back: "/", node: h("div", { class: "page" }, nodes) };
 }
 
 export async function childObjets() {

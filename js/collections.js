@@ -1,6 +1,6 @@
 // Les collections de l'application (R14) : ajouter un type d'élément = ajouter UNE entrée ici.
 import { listDir, readText, pool } from "./graph.js";
-import { parseDoc, intOf, isTrue, humanize, sections } from "./md.js";
+import { parseDoc, intOf, isTrue, humanize, sections, plain } from "./md.js";
 import { findObjet } from "./colors.js";
 
 export const COLLECTIONS = {
@@ -123,6 +123,25 @@ export async function findHeroFile() {
   const ls = await listDir("03_Personnages");
   const f = ls.data.find(x => !x.dir && /Fiche_Heroine\.md$/i.test(x.name));
   return f ? "03_Personnages/" + f.name : null;
+}
+
+/** Pouvoirs de l'héroïne : la liste de la section « ## Pouvoirs » de sa fiche (« 1. **Nom** : effet »). Nom + première phrase de l'effet. */
+export async function loadPouvoirs() {
+  const file = await findHeroFile();
+  if (!file) return { items: [], stale: false, found: false };
+  const r = await readText(file);
+  if (r.text == null) return { items: [], stale: false, found: false };
+  const sec = (r.text.replace(/\r\n/g, "\n").match(/^## Pouvoirs?\s*\n([\s\S]*?)(?=\n## |(?![\s\S]))/m) || [, ""])[1];
+  const items = [];
+  for (const line of sec.split("\n")) {
+    const m = line.match(/^\s*(?:\d+[.)]|[-*])\s+(?:\*\*(.+?)\*\*\s*:?|([^:*]+?)\s*:)\s*(.*)$/);
+    if (!m) continue;
+    const nom = (m[1] || m[2]).replace(/\s*:\s*$/, "").trim();
+    let effet = plain(m[3] || "").split(/(?<=[.!?])\s+/)[0].replace(/[.\s]+$/, "").trim();
+    if (effet) effet = effet.charAt(0).toUpperCase() + effet.slice(1);
+    if (nom) items.push({ nom, effet });
+  }
+  return { items, stale: r.stale, found: true };
 }
 
 /** État de l'héroïne (prénom, cœurs, armure, équipement) lu dans sa fiche. */

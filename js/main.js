@@ -26,6 +26,7 @@ const ROUTES = [
   [/^\/child\/bientot\/(.+)$/, n => S.soon(dec(n)), "child"],
   [/^\/child\/outils$/, () => S.tools(), "child"],
   [/^\/child\/bourse$/, () => P.bourseScreen(), "child"],
+  [/^\/child\/pouvoirs$/, () => P.pouvoirsScreen(), "child"],
   [/^\/child\/journal$/, () => P.journalScreen(), "child"],
   [/^\/child\/carte$/, () => P.mapScreen("child"), "child"],
   [/^\/child\/c\/objet$/, () => P.childObjets(), "child"],
@@ -81,7 +82,7 @@ let cleanup = null;
 let busy = false;                       // une vraie navigation est en cours : le redessin automatique attend
 
 /** Peut-on redessiner l'écran tout seul ? Seulement les écrans de lecture, jamais pendant une saisie ou une fenêtre ouverte. */
-const SOFT_OK = /^\/($|child\/(journal|bourse|c\/)|mj\/(ce-soir|histoires|monde|lieux|objets|c\/|heroine|f\/))/;
+const SOFT_OK = /^\/($|child\/(journal|bourse|pouvoirs|c\/)|mj\/(ce-soir|histoires|monde|lieux|objets|c\/|heroine|f\/))/;
 function canRedraw() {
   const path = location.hash.replace(/^#/, "") || "/";
   if (!SOFT_OK.test(path) || !isSignedIn()) return false;

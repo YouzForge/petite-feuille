@@ -70,6 +70,7 @@ const TILES = [
   { name: "Mes monstres", icon: "monster", color: "var(--purple)", to: "/child/c/creature" },
   { name: "Mes amis", icon: "friends", color: "var(--yellow)", to: "/child/c/personnage" },
   { name: "Mes compagnons", icon: "paw", color: "var(--red)", to: "/child/c/compagnon" },
+  { name: "Mes pouvoirs", icon: "star", color: "var(--purple)", to: "/child/pouvoirs" },
   { name: "Ma bourse", icon: "purse", color: "var(--leather)", to: "/child/bourse" },
   { name: "Mes outils", icon: "tools", color: "var(--muted)", to: "/child/outils" }
 ];

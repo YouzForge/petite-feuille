@@ -10,7 +10,7 @@ export const TYPES_VOIE = [
   { cle: "ruser",     nom: "Ruser",                 icone: "key",    mots: ["ruser", "ruse", "crocheter", "piege", "deguis", "cacher", "tromper"] },
   { cle: "chemin",    nom: "Autre chemin",          icone: "detour", mots: ["chemin", "contourner", "passage", "grimper", "explorer", "detour"] },
   { cle: "reflechir", nom: "Réfléchir",             icone: "bulb",   mots: ["reflechir", "enigme", "devinette", "puzzle", "logique"] },
-  { cle: "objet",     nom: "Objet ou compagnon",    icone: "bag",    mots: ["objet", "compagnon", "utiliser", "outil"] },
+  { cle: "objet",     nom: "Objet ou compagnon",    icone: "bag",    mots: ["objet", "compagnon", "utiliser", "outil", "bouclier", "bloquer", "blocage"] },
   { cle: "cooperer",  nom: "Coopérer",              icone: "friends", mots: ["cooper", "aider", "ensemble", "equipe"] },
 ];
 export const TYPE_DEFAUT = { cle: "autre", nom: "", icone: "star", mots: [] };
